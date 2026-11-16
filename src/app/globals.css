@@ -1,0 +1,217 @@
+@import 'tailwindcss';
+
+/* --------------------------------------------------------------------------
+   RingPortal design tokens
+   Brand: electric blue #087CFF, deep blue #005DE8, champagne gold #C9A76D.
+   Electric blue is used for marks, indicators and focus (non-text, ≥3:1).
+   Text-bearing primary actions use deep blue for ≥4.5:1 against white.
+   -------------------------------------------------------------------------- */
+:root {
+  /* Product default is light. The server renders the stored choice into the
+     color-scheme <meta>; this maps it into the cascade. */
+  color-scheme: light dark;
+  &:has(> head > meta[name='color-scheme'][content='dark']) {
+    color-scheme: dark;
+  }
+  &:has(> head > meta[name='color-scheme'][content='light']) {
+    color-scheme: light;
+  }
+
+  --rp-brand-blue: #087cff;
+  --rp-brand-deep: #005de8;
+  --rp-brand-gold: #c9a76d;
+
+  --rp-bg: light-dark(#f5f7fa, #0a0e15);
+  --rp-surface: light-dark(#ffffff, #111722);
+  --rp-surface-2: light-dark(#f9fafc, #161d2a);
+  --rp-border: light-dark(#e5eaf0, #232c3b);
+  --rp-border-strong: light-dark(#cfd7e2, #334055);
+  --rp-text: light-dark(#0b1220, #e8edf5);
+  --rp-muted: light-dark(#556072, #9aa6b8);
+  --rp-link: light-dark(#005de8, #6cb2ff);
+  --rp-primary: #005de8; /* white text 5.6:1 in both themes */
+  --rp-primary-hover: #004bbd;
+  --rp-on-primary: #ffffff;
+  --rp-focus: #087cff;
+  --rp-nav-active-bg: light-dark(#eaf3ff, #10233d);
+  --rp-danger: light-dark(#b42318, #ff8a80);
+  --rp-danger-bg: light-dark(#fef3f2, #2a1414);
+  --rp-success: light-dark(#067647, #6ee7a8);
+  --rp-success-bg: light-dark(#ecfdf3, #0f2a1d);
+  --rp-warning: light-dark(#8a5a00, #f5c46b);
+  --rp-warning-bg: light-dark(#fff8e6, #2a2110);
+  --rp-gold-text: light-dark(#7a5c26, #dcc196);
+
+  --rp-sidebar-collapsed: 68px;
+  --rp-sidebar-expanded: 200px;
+
+  accent-color: var(--rp-primary);
+  scrollbar-color: var(--rp-border-strong) transparent;
+}
+
+@theme inline {
+  --color-bg: var(--rp-bg);
+  --color-surface: var(--rp-surface);
+  --color-surface-2: var(--rp-surface-2);
+  --color-line: var(--rp-border);
+  --color-line-strong: var(--rp-border-strong);
+  --color-ink: var(--rp-text);
+  --color-muted: var(--rp-muted);
+  --color-link: var(--rp-link);
+  --color-primary: var(--rp-primary);
+  --color-primary-hover: var(--rp-primary-hover);
+  --color-on-primary: var(--rp-on-primary);
+  --color-electric: var(--rp-brand-blue);
+  --color-deep: var(--rp-brand-deep);
+  --color-gold: var(--rp-brand-gold);
+  --color-gold-ink: var(--rp-gold-text);
+  --color-danger: var(--rp-danger);
+  --color-danger-bg: var(--rp-danger-bg);
+  --color-success: var(--rp-success);
+  --color-success-bg: var(--rp-success-bg);
+  --color-warning: var(--rp-warning);
+  --color-warning-bg: var(--rp-warning-bg);
+  --color-nav-active: var(--rp-nav-active-bg);
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', ui-sans-serif, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+@layer base {
+  html {
+    background: var(--rp-bg);
+    color: var(--rp-text);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01', 'tnum';
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--rp-link);
+  }
+  :focus-visible {
+    outline: 2px solid var(--rp-focus);
+    outline-offset: 2px;
+  }
+  /* Form inputs are at least 16px so iOS does not zoom on focus. */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .rp-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    line-height: 0.95;
+  }
+  .rp-eyebrow {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.8rem;
+    color: var(--rp-muted);
+  }
+
+  /* Field validation: only after interaction (:user-invalid), or when the server flagged it. */
+  .rp-input {
+    width: 100%;
+    border: 1px solid var(--rp-border-strong);
+    background: var(--rp-surface);
+    color: var(--rp-text);
+    border-radius: var(--radius-md);
+    padding: 0.625rem 0.75rem;
+    line-height: 1.4;
+    transition: border-color 120ms, box-shadow 120ms;
+    &:hover {
+      border-color: var(--rp-muted);
+    }
+    &:focus-visible {
+      outline: none;
+      border-color: var(--rp-focus);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus) 30%, transparent);
+    }
+    &:user-invalid,
+    &[aria-invalid='true'] {
+      border-color: var(--rp-danger);
+    }
+  }
+
+  /* Collapsed-sidebar tooltips: shown on hover and keyboard focus only when collapsed. */
+  .rp-nav-tip {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    translate: 0 -50%;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    background: var(--rp-text);
+    color: var(--rp-bg);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: opacity 100ms;
+    z-index: 50;
+  }
+  [data-nav='collapsed'] .rp-nav-link:is(:hover, :focus-visible) .rp-nav-tip {
+    opacity: 1;
+  }
+  [data-nav='expanded'] .rp-nav-tip {
+    display: none;
+  }
+
+  /* Mobile navigation drawer (popover=manual, see Sidebar component). */
+  .rp-drawer {
+    margin: 0;
+    inset: 0 auto 0 0;
+    height: 100dvh;
+    max-height: none;
+    width: min(85vw, 300px);
+    border: 0;
+    border-right: 1px solid var(--rp-border);
+    background: var(--rp-surface);
+    color: var(--rp-text);
+    padding: 0;
+    translate: -100% 0;
+    transition: translate 200ms ease, overlay 200ms allow-discrete, display 200ms allow-discrete;
+    &:popover-open {
+      translate: 0 0;
+      @starting-style {
+        translate: -100% 0;
+      }
+    }
+    &::backdrop {
+      background: rgb(5 10 20 / 0);
+      transition: background 200ms, overlay 200ms allow-discrete, display 200ms allow-discrete;
+    }
+    &:popover-open::backdrop {
+      background: rgb(5 10 20 / 0.45);
+      @starting-style {
+        background: rgb(5 10 20 / 0);
+      }
+    }
+  }
+}
