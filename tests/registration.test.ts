@@ -3,7 +3,7 @@ import { POST as registerApi } from '@/app/api/auth/register/route';
 import { GET as lookupApi } from '@/app/api/auth/register/directory/route';
 import { POST as decideApi } from '@/app/api/admin/clubs/[id]/route';
 import { POST as createBoxerApi } from '@/app/api/boxers/route';
-import { decideClub, getClubForAdmin, listClubsForAdmin } from '@/server/clubs/admin';
+import { decideClub, getClubForAdmin, listClubsForAdmin, setClubRegion } from '@/server/clubs/admin';
 import { closeDb } from '@/server/db/client';
 import type { AdminSession } from '@/server/auth/session';
 import { cookieFrom, createClub, createPlatformUser, ctx, idCtx, json, owner, req, uid } from './helpers';
@@ -72,6 +72,22 @@ describe('club registration', () => {
     // The claim is only a request: the directory record is not linked yet.
     const { rows } = await owner.query(`select claim_status, club_id from directory_clubs where id = $1`, [d.id]);
     expect(rows[0]).toEqual({ claim_status: 'unclaimed', club_id: null });
+  });
+
+  it('records a known region, and a claimed directory record’s region wins; admins can correct it', async () => {
+    const d = await directoryClub();
+    const typed = body({ region: 'Test Region' });
+    expect((await register(typed)).status).toBe(201);
+    expect(await fields(await register(body({ region: 'Made Up Region' })))).toHaveProperty('region');
+    const { rows } = await owner.query(`select c.id, c.region from clubs c join club_users u on u.club_id = c.id where u.email = $1`, [typed.email]);
+    expect(rows[0].region).toBe('Test Region');
+    const claimed = body({ region: '', directoryClubId: d.id });
+    await register(claimed);
+    expect((await owner.query(`select c.region from clubs c join club_users u on u.club_id = c.id where u.email = $1`, [claimed.email])).rows[0].region).toBe('Test Region');
+    const a = await admin();
+    await expect(setClubRegion(a, rows[0].id, 'Made Up Region', meta)).rejects.toMatchObject({ code: 'validation_failed' });
+    await setClubRegion(a, rows[0].id, null, meta);
+    expect((await getClubForAdmin(rows[0].id))!.region).toBeNull();
   });
 
   it('directory lookup returns unclaimed names only and needs three characters', async () => {

@@ -62,6 +62,8 @@ export const clubs = pgTable(
       .references(() => governingBodies.id),
     affiliationNumber: text('affiliation_number'),
     affiliationExpiresOn: date('affiliation_expires_on', { mode: 'string' }),
+    /** Governing-body region (England Boxing regions from the directory). Used as a matchmaking filter. */
+    region: text('region'),
     status: clubStatus('status').notNull().default('draft'),
     statusReason: text('status_reason'),
     statusChangedAt: ts('status_changed_at').notNull().defaultNow(),
@@ -75,6 +77,7 @@ export const clubs = pgTable(
       .on(t.governingBodyId, t.affiliationNumber)
       .where(sql`${t.affiliationNumber} is not null`),
     index('clubs_status_idx').on(t.status),
+    index('clubs_region_idx').on(t.region),
     check('clubs_name_len', sql`char_length(${t.name}) between 2 and 160`),
     check('clubs_slug_fmt', sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
   ],

@@ -60,7 +60,7 @@ export async function listClubsForAdmin(opts: { filter: ClubFilter; q?: string; 
 }
 
 export type AdminClubDetail = {
-  id: string; name: string; slug: string; status: ClubStatus; statusReason: string | null; statusChangedAt: string; isDemo: boolean; governingBody: string;
+  id: string; name: string; slug: string; status: ClubStatus; statusReason: string | null; statusChangedAt: string; isDemo: boolean; governingBody: string; region: string | null;
   affiliationNumber: string | null; affiliationExpiresOn: string | null; createdAt: string;
   logins: { email: string; status: string; lastLoginAt: string | null }[];
   claims: { id: string; status: 'pending' | 'approved' | 'rejected'; createdAt: string; directoryClubId: string; directoryName: string; directoryRegion: string | null; directoryPostcode: string | null; directoryClaimedByOther: boolean }[];
@@ -73,7 +73,7 @@ export async function getClubForAdmin(id: string): Promise<AdminClubDetail | nul
     const [c] = await tx
       .select({
         id: clubs.id, name: clubs.name, slug: clubs.slug, status: clubs.status, statusReason: clubs.statusReason, statusChangedAt: clubs.statusChangedAt, isDemo: clubs.isDemo,
-        governingBody: governingBodies.name, affiliationNumber: clubs.affiliationNumber, affiliationExpiresOn: clubs.affiliationExpiresOn, createdAt: clubs.createdAt,
+        governingBody: governingBodies.name, region: clubs.region, affiliationNumber: clubs.affiliationNumber, affiliationExpiresOn: clubs.affiliationExpiresOn, createdAt: clubs.createdAt,
       })
       .from(clubs)
       .innerJoin(governingBodies, eq(governingBodies.id, clubs.governingBodyId))
@@ -146,9 +146,10 @@ export async function decideClub(admin: AdminSession, id: string, input: ClubDec
     if (claim && (input.action === 'approve' || input.action === 'reject')) {
       claimOutcome = input.action === 'approve' && !input.rejectClaim ? 'approved' : 'rejected';
       if (claimOutcome === 'approved') {
-        const [d] = await tx.select({ clubId: directoryClubs.clubId }).from(directoryClubs).where(eq(directoryClubs.id, claim.directoryClubId)).for('update');
+        const [d] = await tx.select({ clubId: directoryClubs.clubId, region: directoryClubs.region }).from(directoryClubs).where(eq(directoryClubs.id, claim.directoryClubId)).for('update');
         if (!d || d.clubId) throw new ApiError('conflict', 'The claimed directory record is already linked to another club. Approve without the claim, or reject.');
         await tx.update(directoryClubs).set({ clubId: id, claimStatus: 'claimed' }).where(eq(directoryClubs.id, claim.directoryClubId));
+        if (d.region) await tx.update(clubs).set({ region: d.region }).where(eq(clubs.id, id));
       }
       await tx.update(clubClaims).set({ status: claimOutcome, decidedBy: admin.platformUserId, decidedAt: new Date() }).where(eq(clubClaims.id, claim.id));
     }
@@ -177,4 +178,28 @@ export async function decideClub(admin: AdminSession, id: string, input: ClubDec
   });
   if (!result) throw new ApiError('not_found', 'Club not found');
   return result;
+}
+
+export const clubRegionSchema = z.object({ region: z.string().trim().max(80).optional().nullable().transform((v) => v || null) });
+
+export async function listRegionsForAdmin(): Promise<string[]> {
+  return withAdmin(async (tx) => {
+    const rows = await tx.selectDistinct({ region: directoryClubs.region }).from(directoryClubs).where(sql`${directoryClubs.region} is not null`).orderBy(directoryClubs.region);
+    return rows.map((r) => r.region!);
+  });
+}
+
+/** Sets or clears a club's region (must be one of the directory's regions). Audited. */
+export async function setClubRegion(admin: AdminSession, id: string, region: string | null, meta: { ipHash: string }): Promise<void> {
+  const ok = await withAdmin(async (tx) => {
+    if (region) {
+      const [known] = await tx.select({ id: directoryClubs.id }).from(directoryClubs).where(eq(directoryClubs.region, region)).limit(1);
+      if (!known) throw new ApiError('validation_failed', 'Check the highlighted fields', { region: 'Choose a region from the list' });
+    }
+    const res = await tx.update(clubs).set({ region }).where(eq(clubs.id, id)).returning({ id: clubs.id });
+    if (!res.length) return false;
+    await audit(tx, { actorType: 'platform_user', actorId: admin.platformUserId, clubId: id, action: 'club.region_set', targetType: 'club', targetId: id, metadata: { region }, ipHash: meta.ipHash });
+    return true;
+  });
+  if (!ok) throw new ApiError('not_found', 'Club not found');
 }

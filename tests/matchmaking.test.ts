@@ -58,6 +58,26 @@ describe('matchmaking search', () => {
     expect((await searchMatches(a.session, mine, q({ sort: 'weight' })))!.suitable.map((r) => r.id)).toEqual([close, further]);
   });
 
+  it('filters by the opponent club’s region', async () => {
+    const a = await club();
+    const north = await club();
+    const south = await club();
+    const none = await club();
+    await owner.query(`update clubs set region = 'Yorkshire' where id = $1`, [north.id]);
+    await owner.query(`update clubs set region = 'London' where id = $1`, [south.id]);
+    const mine = await createBoxer(a.id, { dob: yearsAgo(24), weightKg: 101.3 });
+    const y = await createBoxer(north.id, { dob: yearsAgo(24), weightKg: 101.3 });
+    const l = await createBoxer(south.id, { dob: yearsAgo(24), weightKg: 101.3 });
+    const n = await createBoxer(none.id, { dob: yearsAgo(24), weightKg: 101.3 });
+    const ids = async (o: Record<string, string>) => (await searchMatches(a.session, mine, q(o)))!.suitable.map((r) => r.id).sort();
+    expect(await ids({})).toEqual([y, l, n].sort());
+    expect(await ids({ region: 'Yorkshire' })).toEqual([y]);
+    expect(await ids({ region: 'Nowhere' })).toEqual([]);
+    const res = (await searchMatches(a.session, mine, q({ region: 'London' })))!;
+    expect(res.suitable.map((r) => [r.id, r.clubRegion])).toEqual([[l, 'London']]);
+    expect(res.filters.region).toBe('London');
+  });
+
   it('keeps juniors with juniors and shortens their names', async () => {
     const a = await club();
     const b = await club();
@@ -83,7 +103,7 @@ describe('matchmaking search', () => {
     const app = new Client({ connectionString: TEST_APP_URL });
     await app.connect();
     try {
-      const call = `select * from match_candidates('male', 0, 300, 0, 120, null, true)`;
+      const call = `select * from match_candidates('male', 0, 300, 0, 120, null, true, null)`;
       expect((await app.query(call)).rowCount).toBe(0); // no context
       await app.query('begin');
       await app.query(`select set_config('app.context', 'auth', true)`);

@@ -8,7 +8,7 @@ import { buttonClass } from '@/components/ui/button';
 import { AVAILABILITY_LABEL, AVAILABILITY_TONE, SEX_LABEL, formatKg, recordLabel } from '@/lib/boxers';
 import { DEFAULTS, LIMITS, SORTS, SORT_LABEL } from '@/lib/matchmaking';
 import { requireApprovedClubPage } from '@/server/auth/guards';
-import { listGoverningBodies, parseMatchQuery, searchMatches, type MatchResult } from '@/server/matchmaking/service';
+import { listGoverningBodies, listRegions, parseMatchQuery, searchMatches, type MatchResult } from '@/server/matchmaking/service';
 import { ownBoxersForProposal } from '@/server/proposals/service';
 
 export const metadata: Metadata = { title: 'Matchmaking' };
@@ -57,7 +57,7 @@ function Name({ r }: { r: MatchResult }) {
     <>
       <span className="font-semibold text-ink">{r.displayName}</span> {r.isJunior ? <Badge tone="neutral">Junior</Badge> : null}
       <span className="block text-xs text-muted">
-        <Link href={`/clubs/ringportal/${r.clubSlug}`}>{r.clubName}</Link> · {r.governingBody}
+        <Link href={`/clubs/ringportal/${r.clubSlug}`}>{r.clubName}</Link> · {r.clubRegion ?? 'Region not recorded'} · {r.governingBody}
       </span>
     </>
   );
@@ -68,7 +68,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
   if (!approved) return <NotApprovedNotice feature="Matchmaking" />;
   const raw = await searchParams;
   const q = parseMatchQuery(raw);
-  const [own, bodies] = await Promise.all([ownBoxersForProposal(session), listGoverningBodies(session)]);
+  const [own, bodies, regions] = await Promise.all([ownBoxersForProposal(session), listGoverningBodies(session), listRegions(session)]);
   const selectedId = q.boxer && own.some((b) => b.id === q.boxer) ? q.boxer : undefined;
   const search = selectedId ? await searchMatches(session, selectedId, q) : null;
   const view = q.view ?? 'table';
@@ -126,6 +126,15 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
+              <label htmlFor="mm-region" className="text-sm font-semibold text-ink">Region</label>
+              <select id="mm-region" name="region" defaultValue={q.region ?? ''} className="rp-input">
+                <option value="">Any</option>
+                {regions.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="mm-sort" className="text-sm font-semibold text-ink">Sort by</label>
               <select id="mm-sort" name="sort" defaultValue={q.sort ?? 'best'} className="rp-input">
                 {SORTS.map((s) => (
@@ -150,7 +159,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
         <>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted" role="status">
-              <strong className="text-ink">{search.suitable.length}</strong> suitable {search.suitable.length === 1 ? 'opponent' : 'opponents'} for {search.own.displayName}: {SEX_LABEL[search.own.sex].toLowerCase()}, {formatKg(search.own.weightKg - search.filters.toleranceKg)}–{formatKg(search.own.weightKg + search.filters.toleranceKg)}, aged {search.filters.minAge}–{search.filters.maxAge}.
+              <strong className="text-ink">{search.suitable.length}</strong> suitable {search.suitable.length === 1 ? 'opponent' : 'opponents'} for {search.own.displayName}: {SEX_LABEL[search.own.sex].toLowerCase()}, {formatKg(search.own.weightKg - search.filters.toleranceKg)}–{formatKg(search.own.weightKg + search.filters.toleranceKg)}, aged {search.filters.minAge}–{search.filters.maxAge}{search.filters.region ? `, ${search.filters.region} region` : ''}.
             </p>
             <nav aria-label="Result view" className="flex gap-1">
               {(['table', 'cards'] as const).map((v) => (
@@ -165,7 +174,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
             <Card className="mt-3">
               <div className="py-8 text-center text-sm text-muted">
                 <p className="font-semibold text-ink">No suitable opponents found</p>
-                <p className="mt-1">Try a wider weight tolerance or age gap, or <Link href={`/matchmaking?boxer=${selectedId}`}>clear the filters</Link>. More boxers appear as clubs join RingPortal.</p>
+                <p className="mt-1">Try a wider weight tolerance or age gap, another region, or <Link href={`/matchmaking?boxer=${selectedId}`}>clear the filters</Link>. More boxers appear as clubs join RingPortal.</p>
               </div>
             </Card>
           ) : view === 'cards' ? (

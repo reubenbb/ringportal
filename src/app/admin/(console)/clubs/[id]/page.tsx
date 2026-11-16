@@ -4,13 +4,14 @@ import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { BoxersSection } from '@/components/boxers/boxers-section';
 import { ClubDecision } from '@/components/clubs/club-decision';
+import { RegionSelect } from '@/components/clubs/region-select';
 import { Alert } from '@/components/ui/alert';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { actionsFor } from '@/lib/club-admin';
 import { CLUB_STATUS, formatDate, formatDateTime } from '@/lib/club-status';
 import { requireAdminPage } from '@/server/auth/guards';
 import { rosterForAdmin } from '@/server/boxers/service';
-import { getClubForAdmin } from '@/server/clubs/admin';
+import { getClubForAdmin, listRegionsForAdmin } from '@/server/clubs/admin';
 
 export const metadata: Metadata = { title: 'Club' };
 
@@ -48,6 +49,8 @@ export default async function AdminClubPage({ params }: { params: Promise<{ id: 
             <dl className="grid grid-cols-[minmax(0,10rem)_1fr] gap-x-4 gap-y-2.5 text-sm">
               <dt className="text-muted">Governing body</dt>
               <dd className="text-ink">{c.governingBody}</dd>
+              <dt className="text-muted">Region</dt>
+              <dd><RegionSelect clubId={c.id} value={c.region} regions={await listRegionsForAdmin()} /></dd>
               <dt className="text-muted">Affiliation number</dt>
               <dd className="text-ink">{c.affiliationNumber ?? 'Not given'}</dd>
               <dt className="text-muted">Affiliation expires</dt>

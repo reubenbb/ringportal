@@ -9,7 +9,7 @@ import { Field } from '@/components/ui/field';
 
 type Found = { id: string; name: string; region: string | null };
 
-export function RegisterForm({ bodies }: { bodies: { id: number; name: string }[] }) {
+export function RegisterForm({ bodies, regions }: { bodies: { id: number; name: string }[]; regions: string[] }) {
   const router = useRouter();
   const id = useId();
   const { pending, fieldErrors, formError, submit, clearField } = useSubmit<{ ok: boolean }>();
@@ -40,6 +40,7 @@ export function RegisterForm({ bodies }: { bodies: { id: number; name: string }[
       clubName: f.get('clubName'),
       governingBodyId: f.get('governingBodyId'),
       affiliationNumber: f.get('affiliationNumber') ?? '',
+      region: f.get('region') ?? '',
       directoryClubId: claim?.id ?? null,
       email: f.get('email'),
       password: f.get('password'),
@@ -70,6 +71,17 @@ export function RegisterForm({ bodies }: { bodies: { id: number; name: string }[
           ))}
         </select>
         {fieldErrors.governingBodyId ? <p id={`${id}-body-err`} className="text-sm font-medium text-danger">✕ {fieldErrors.governingBodyId}</p> : null}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={`${id}-region`} className="text-sm font-semibold text-ink">Region</label>
+        <select id={`${id}-region`} name="region" defaultValue="" className="rp-input" aria-invalid={fieldErrors.region ? true : undefined} onChange={() => clearField('region')}>
+          <option value="">Not sure / not listed</option>
+          {regions.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+        <p className="text-xs text-muted">Other clubs can filter matchmaking by region. If you claim a directory record below, its region is used.</p>
+        {fieldErrors.region ? <p className="text-sm font-medium text-danger">✕ {fieldErrors.region}</p> : null}
       </div>
       <Field label="Affiliation number" name="affiliationNumber" maxLength={40} hint="Optional, but it speeds up verification." error={fieldErrors.affiliationNumber} onInput={() => clearField('affiliationNumber')} />
 

@@ -29,6 +29,7 @@ export const registerSchema = z.object({
     .nullable()
     .transform((v) => v || null)
     .pipe(z.uuid({ error: 'Choose a club from the list' }).nullable()),
+  region: z.string().trim().max(80).optional().nullable().transform((v) => v || null),
   email: emailSchema,
   password: passwordSchema,
   authorised: z.literal(true, { error: 'Confirm that you are authorised to register this club' }),
@@ -71,9 +72,14 @@ export async function registerClub(input: RegisterInput, meta: Meta): Promise<st
         if (dupe) throw fail({ affiliationNumber: 'A club with this affiliation number is already registered. If that is your club, ask your club’s account holder for the login.' });
       }
 
+      let region = input.region;
+      if (region) {
+        const [known] = await tx.select({ id: directoryClubs.id }).from(directoryClubs).where(eq(directoryClubs.region, region)).limit(1);
+        if (!known) throw fail({ region: 'Choose a region from the list' });
+      }
       if (input.directoryClubId) {
         const [d] = await tx
-          .select({ id: directoryClubs.id, claimStatus: directoryClubs.claimStatus, governingBodyId: directoryClubs.governingBodyId })
+          .select({ id: directoryClubs.id, claimStatus: directoryClubs.claimStatus, governingBodyId: directoryClubs.governingBodyId, region: directoryClubs.region })
           .from(directoryClubs)
           .where(eq(directoryClubs.id, input.directoryClubId));
         if (!d) throw fail({ directoryClubId: 'Choose a club from the list' });
@@ -83,11 +89,13 @@ export async function registerClub(input: RegisterInput, meta: Meta): Promise<st
           .from(clubClaims)
           .where(and(eq(clubClaims.directoryClubId, d.id), inArray(clubClaims.status, ['pending', 'approved'])));
         if (d.claimStatus !== 'unclaimed' || live) throw fail({ directoryClubId: 'This club has already been claimed or has a claim waiting for review' });
+        // A claimed directory record's region takes precedence over the one typed in.
+        region = d.region ?? region;
       }
 
       const [club] = await tx
         .insert(clubs)
-        .values({ name: input.clubName, slug: slugify(input.clubName), governingBodyId: input.governingBodyId, affiliationNumber: input.affiliationNumber, status: 'submitted' })
+        .values({ name: input.clubName, slug: slugify(input.clubName), governingBodyId: input.governingBodyId, affiliationNumber: input.affiliationNumber, region, status: 'submitted' })
         .returning({ id: clubs.id });
       const [user] = await tx.insert(clubUsers).values({ clubId: club!.id, email: input.email, passwordHash }).returning({ id: clubUsers.id });
       if (input.directoryClubId) await tx.insert(clubClaims).values({ clubId: club!.id, directoryClubId: input.directoryClubId });
@@ -126,4 +134,11 @@ export async function searchClaimable(q: string, meta: { ipHash: string }): Prom
 
 export async function listGoverningBodiesPublic(): Promise<{ id: number; name: string }[]> {
   return withAuth((tx) => tx.select({ id: governingBodies.id, name: governingBodies.name }).from(governingBodies).orderBy(governingBodies.id));
+}
+
+export async function listRegionsPublic(): Promise<string[]> {
+  return withAuth(async (tx) => {
+    const rows = await tx.selectDistinct({ region: directoryClubs.region }).from(directoryClubs).where(sql`${directoryClubs.region} is not null`).orderBy(directoryClubs.region);
+    return rows.map((r) => r.region!);
+  });
 }
