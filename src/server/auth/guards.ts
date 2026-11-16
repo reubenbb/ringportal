@@ -56,6 +56,12 @@ export async function requireClubPage(): Promise<ClubSession> {
   return session;
 }
 
+/** Page guard for verified-club features. Unapproved clubs are signed in but get null (page shows why). */
+export async function requireApprovedClubPage(): Promise<{ session: ClubSession; approved: boolean }> {
+  const session = await requireClubPage();
+  return { session, approved: session.clubStatus === 'approved' };
+}
+
 export async function getAdminSession(): Promise<AdminSession | null> {
   return resolveAdminSession(await tokenFromCookies('admin'));
 }

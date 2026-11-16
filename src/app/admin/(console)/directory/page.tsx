@@ -111,7 +111,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
                 {list.rows.map((r) => (
                   <tr key={r.id} className="align-top">
                     <td className="px-5 py-3">
-                      <p className="font-semibold text-ink">{r.name}</p>
+                      <Link href={`/admin/directory/${r.id}`} className="font-semibold">
+                        {r.name}
+                      </Link>
                       <p className="text-xs text-muted">
                         {DIRECTORY_SOURCE_LABEL} · ID {r.sourceRef}
                       </p>

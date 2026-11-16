@@ -235,3 +235,48 @@ describe('origin check on Vercel', () => {
     }
   });
 });
+
+describe('directory profiles', () => {
+  it('a club can search and open profiles through its own read-only context', async () => {
+    const { listDirectoryForClub, getDirectoryProfileForClub } = await import('@/server/directory/profiles');
+    const { club, user } = await createClubWithUser();
+    const session = { sessionId: '', clubUserId: user.id, clubId: club.id, email: user.email, clubName: club.name, clubSlug: club.slug, clubStatus: 'approved' as const, isDemoClub: false };
+    const list = await listDirectoryForClub(session, { q: 'Brighton Boxing' });
+    const brighton = list.rows.find((r) => r.name === 'Brighton Boxing Academy');
+    expect(brighton).toBeTruthy();
+    const profile = await getDirectoryProfileForClub(session, brighton!.slug);
+    expect(profile).toMatchObject({ name: 'Brighton Boxing Academy', sourceRef: '997269', governingBody: 'England Boxing', claimStatus: 'unclaimed' });
+    expect(profile!.sourceUrl).toMatch(/^https:\/\/englandboxing\.sport80\.com\//);
+    expect(await getDirectoryProfileForClub(session, 'no-such-club-anywhere')).toBeNull();
+    expect(await getDirectoryProfileForClub(session, "x' or 1=1--")).toBeNull();
+    const all = await listDirectoryForClub(session, { page: 2 });
+    expect(all.rows).toHaveLength(30);
+    expect(all.total).toBeGreaterThanOrEqual(1043);
+  });
+
+  it('search terms are treated literally, not as SQL wildcards', async () => {
+    const { listDirectoryForClub } = await import('@/server/directory/profiles');
+    const { club, user } = await createClubWithUser();
+    const session = { sessionId: '', clubUserId: user.id, clubId: club.id, email: user.email, clubName: club.name, clubSlug: club.slug, clubStatus: 'approved' as const, isDemoClub: false };
+    expect((await listDirectoryForClub(session, { q: '%' })).total).toBe(0);
+  });
+
+  it('admin profile includes verification history with the acting admin and note', async () => {
+    const { getDirectoryProfileForAdmin } = await import('@/server/directory/profiles');
+    const id = (await owner.query(`select id from directory_clubs where source_ref = '997269'`)).rows[0].id as string;
+    const data = await getDirectoryProfileForAdmin(id);
+    expect(data!.history.map((h) => h.action)).toContain('directory.address_verified');
+    expect(data!.history.find((h) => h.action === 'directory.address_verified')!.reason).toBe('Phoned the head coach to confirm the venue');
+    expect(await getDirectoryProfileForAdmin('00000000-0000-4000-8000-000000000000')).toBeNull();
+  });
+
+  it('parses social references into safe links only', async () => {
+    const { parseSocial } = await import('@/lib/social');
+    expect(parseSocial('Facebook: Club Page | Instagram: https://www.instagram.com/club/')).toEqual([
+      { network: 'Facebook', text: 'Club Page', href: null },
+      { network: 'Instagram', text: 'instagram.com/club', href: 'https://www.instagram.com/club/' },
+    ]);
+    expect(parseSocial('Website: javascript:alert(1)')[0]!.href).toBeNull();
+    expect(parseSocial(null)).toEqual([]);
+  });
+});
