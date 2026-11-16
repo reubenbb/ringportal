@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { NotApprovedNotice } from '@/components/boxers/not-approved';
 import { ArchiveConversationButton } from '@/components/messaging/conversation-buttons';
+import { ReasonForm } from '@/components/messaging/report-form';
 import { Thread } from '@/components/messaging/thread';
 import { Badge, PageHeader } from '@/components/ui/card';
 import { KIND_LABEL } from '@/lib/messaging';
@@ -47,6 +48,17 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
         otherClubName={c.otherClub.name}
         canSend={c.otherClub.approved}
       />
+      <div className="mt-6">
+        <ReasonForm
+          endpoint={`/api/conversations/${c.id}/report`}
+          field="reason"
+          openLabel="Report this conversation"
+          label="What is the problem?"
+          hint="A RingPortal administrator will read this conversation to review your report. The other club is not told who reported it."
+          submitLabel="Send report"
+          doneText="Report sent. An administrator will review it."
+        />
+      </div>
     </>
   );
 }

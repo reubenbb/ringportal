@@ -615,3 +615,174 @@ export const clubClaims = pgTable(
     uniqueIndex('club_claims_club_live_uq').on(t.clubId).where(sql`${t.status} in ('pending', 'approved')`),
   ],
 );
+
+// Shows and opponent requests ---------------------------------------------------
+
+export const showStatus = pgEnum('show_status', ['scheduled', 'cancelled']);
+export const openClosed = pgEnum('request_status', ['open', 'closed']);
+
+export const shows = pgTable(
+  'shows',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    startsAt: ts('starts_at').notNull(),
+    venue: text('venue').notNull(),
+    postcode: text('postcode').notNull(),
+    /** How other clubs should get in touch. Never shown on the public calendar. */
+    contactRoute: text('contact_route'),
+    requirements: text('requirements'),
+    info: text('info'),
+    listedPublicly: boolean('listed_publicly').notNull().default(true),
+    status: showStatus('status').notNull().default('scheduled'),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('shows_club_idx').on(t.clubId),
+    index('shows_starts_idx').on(t.startsAt),
+    check('shows_text_len', sql`char_length(${t.name}) between 3 and 120 and char_length(${t.venue}) between 2 and 160 and char_length(${t.postcode}) between 2 and 10`),
+  ],
+);
+
+export const opponentRequests = pgTable(
+  'opponent_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    showId: uuid('show_id').references(() => shows.id, { onDelete: 'restrict' }),
+    /** The club's own boxer this request is for, if they choose to link one. */
+    boxerId: uuid('boxer_id').references(() => boxers.id, { onDelete: 'restrict' }),
+    sex: boxerSex('sex').notNull(),
+    minAge: smallint('min_age').notNull(),
+    maxAge: smallint('max_age').notNull(),
+    weightKg: numeric('weight_kg', { precision: 5, scale: 2, mode: 'number' }).notNull(),
+    boutType: boutType('bout_type').notNull(),
+    experience: text('experience'),
+    neededOn: date('needed_on', { mode: 'string' }),
+    location: text('location'),
+    requirements: text('requirements'),
+    status: openClosed('status').notNull().default('open'),
+    closedAt: ts('closed_at'),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('opponent_requests_club_idx').on(t.clubId),
+    index('opponent_requests_open_idx').on(t.status, t.sex, t.weightKg),
+    check('opponent_requests_age', sql`${t.minAge} between 8 and 80 and ${t.maxAge} between 8 and 80 and ${t.minAge} <= ${t.maxAge}`),
+    check('opponent_requests_weight', sql`${t.weightKg} between 20 and 200`),
+  ],
+);
+
+// Individual sparring ------------------------------------------------------------
+// Strictly one boxer looking for one partner. Kept separate from bout proposals.
+
+export const sparringRequestStatus = pgEnum('sparring_request_status', ['open', 'arranged', 'closed']);
+export const sparringOfferStatus = pgEnum('sparring_offer_status', ['pending', 'approved', 'declined', 'withdrawn']);
+
+export const sparringRequests = pgTable(
+  'sparring_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    boxerId: uuid('boxer_id')
+      .notNull()
+      .references(() => boxers.id, { onDelete: 'restrict' }),
+    availabilityNote: text('availability_note'),
+    location: text('location'),
+    notes: text('notes'),
+    status: sparringRequestStatus('status').notNull().default('open'),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('sparring_requests_club_idx').on(t.clubId),
+    uniqueIndex('sparring_requests_open_boxer_uq').on(t.boxerId).where(sql`${t.status} = 'open'`),
+  ],
+);
+
+export const sparringOffers = pgTable(
+  'sparring_offers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => sparringRequests.id, { onDelete: 'restrict' }),
+    requestClubId: uuid('request_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    offeringClubId: uuid('offering_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    partnerBoxerId: uuid('partner_boxer_id')
+      .notNull()
+      .references(() => boxers.id, { onDelete: 'restrict' }),
+    note: text('note'),
+    status: sparringOfferStatus('status').notNull().default('pending'),
+    decidedAt: ts('decided_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('sparring_offers_request_idx').on(t.requestId),
+    index('sparring_offers_offering_idx').on(t.offeringClubId),
+    uniqueIndex('sparring_offers_live_partner_uq').on(t.requestId, t.partnerBoxerId).where(sql`${t.status} in ('pending', 'approved')`),
+    // One approved partner per request.
+    uniqueIndex('sparring_offers_one_approved_uq').on(t.requestId).where(sql`${t.status} = 'approved'`),
+    check('sparring_offers_distinct_clubs', sql`${t.requestClubId} <> ${t.offeringClubId}`),
+  ],
+);
+
+/** Each club's own private attendance record for an arranged sparring session. */
+export const sparringAttendance = pgTable(
+  'sparring_attendance',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    offerId: uuid('offer_id')
+      .notNull()
+      .references(() => sparringOffers.id, { onDelete: 'restrict' }),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    sessionDate: date('session_date', { mode: 'string' }).notNull(),
+    attended: boolean('attended').notNull(),
+    note: text('note'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('sparring_attendance_uq').on(t.offerId, t.clubId, t.sessionDate)],
+);
+
+// Reports ------------------------------------------------------------------------
+// A club can report a conversation it is part of. Administrators read the reported
+// conversation only through the report, and that access is audited.
+
+export const reports = pgTable(
+  'reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    reporterClubId: uuid('reporter_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'restrict' }),
+    reason: text('reason').notNull(),
+    status: openClosed('status').notNull().default('open'),
+    resolution: text('resolution'),
+    resolvedBy: uuid('resolved_by').references(() => platformUsers.id),
+    resolvedAt: ts('resolved_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('reports_status_idx').on(t.status, t.createdAt),
+    uniqueIndex('reports_open_uq').on(t.reporterClubId, t.conversationId).where(sql`${t.status} = 'open'`),
+    check('reports_reason_len', sql`char_length(${t.reason}) between 10 and 1000`),
+  ],
+);

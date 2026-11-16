@@ -306,6 +306,9 @@ export async function actOnProposal(session: ClubSession, id: string, input: Pro
       .set({ status: next, currentVersion: version, ...(statusChanged ? { statusChangedAt: new Date() } : {}) })
       .where(eq(boutProposals.id, id));
 
+    // Keep both boxers' availability in step with a confirmed (or un-confirmed) bout.
+    if (p.status === 'confirmed' || next === 'confirmed') await tx.execute(sql`select sync_bout_availability(${id}::uuid)`);
+
     let from: ProposalStatus | null = p.status;
     for (const e of events) {
       await tx.insert(boutProposalEvents).values({ proposalId: id, version, clubId: session.clubId, actorId: session.clubUserId, event: e.event, fromStatus: from, toStatus: e.to });

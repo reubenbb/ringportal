@@ -32,6 +32,9 @@ export default async function Home() {
               Register your club
             </Link>
           )}
+          <Link href="/calendar" className={buttonClass('ghost')}>
+            Show calendar
+          </Link>
         </div>
       </main>
       <footer className="border-t border-line">

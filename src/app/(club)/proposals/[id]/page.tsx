@@ -60,7 +60,7 @@ function nextStep(p: ProposalDetail): { tone: 'info' | 'success' | 'warning' | '
         ? { tone: 'warning', title: 'Your final confirmation is needed', body: `${v[0]!.toUpperCase()}${v.slice(1)} has been accepted in principle. It becomes a confirmed bout only when both clubs confirm this version.` }
         : { tone: 'info', title: `Waiting for ${other.name} to confirm`, body: `Your club has confirmed ${v}. The bout is confirmed when ${other.name} confirms the same version.` };
     case 'confirmed':
-      return { tone: 'success', title: 'Confirmed bout', body: `Both clubs gave final confirmation of ${v}. Remember to update your boxer’s availability.` };
+      return { tone: 'success', title: 'Confirmed bout', body: `Both clubs gave final confirmation of ${v}. Both boxers are now marked Confirmed.` };
     case 'declined':
       return { tone: 'danger', title: 'Declined', body: `Declined by ${by}${when ? ` (${when})` : ''}.` };
     case 'withdrawn':
