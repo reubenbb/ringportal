@@ -586,3 +586,32 @@ export const messages = pgTable(
     check('messages_body_len', sql`char_length(${t.body}) between 1 and 2000`),
   ],
 );
+
+// Directory claims -------------------------------------------------------------
+// A registering club may claim one England Boxing directory record. The claim is
+// only a request: the directory record is linked when an administrator approves it.
+
+export const claimStatus = pgEnum('club_claim_status', ['pending', 'approved', 'rejected']);
+
+export const clubClaims = pgTable(
+  'club_claims',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    directoryClubId: uuid('directory_club_id')
+      .notNull()
+      .references(() => directoryClubs.id, { onDelete: 'restrict' }),
+    status: claimStatus('status').notNull().default('pending'),
+    decidedBy: uuid('decided_by').references(() => platformUsers.id),
+    decidedAt: ts('decided_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('club_claims_club_idx').on(t.clubId),
+    // One live claim per directory record and per club: prevents duplicate and competing claims.
+    uniqueIndex('club_claims_directory_live_uq').on(t.directoryClubId).where(sql`${t.status} in ('pending', 'approved')`),
+    uniqueIndex('club_claims_club_live_uq').on(t.clubId).where(sql`${t.status} in ('pending', 'approved')`),
+  ],
+);

@@ -7,6 +7,7 @@ import { CLUB_STATUS } from '@/lib/club-status';
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview', icon: 'overview', exact: true },
   { href: '/boxers', label: 'My boxers', icon: 'boxers' },
+  { href: '/matchmaking', label: 'Matchmaking', icon: 'search' },
   { href: '/clubs', label: 'Club directory', icon: 'directory' },
   { href: '/proposals', label: 'Bout proposals', icon: 'proposals', badge: 'proposals' },
   { href: '/messages', label: 'Messages', icon: 'messages', badge: 'messages' },

@@ -5,6 +5,7 @@ import { requireAdminPage } from '@/server/auth/guards';
 
 const NAV: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: 'overview', exact: true },
+  { href: '/admin/clubs', label: 'Clubs', icon: 'clubs' },
   { href: '/admin/directory', label: 'Club directory', icon: 'directory' },
   { href: '/admin/audit', label: 'Audit log', icon: 'audit' },
   { href: '/admin/account', label: 'Account security', icon: 'shield' },

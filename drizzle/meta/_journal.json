@@ -64,6 +64,20 @@
       "when": 1794837162180,
       "tag": "0008_proposals_messaging_security",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794839828782,
+      "tag": "0009_club_claims",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794839829624,
+      "tag": "0010_claims_matchmaking_security",
+      "breakpoints": true
     }
   ]
 }

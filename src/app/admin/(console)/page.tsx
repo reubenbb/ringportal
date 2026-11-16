@@ -17,7 +17,7 @@ export default async function AdminOverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Clubs" value={o.totalClubs} hint={o.demoClubs ? `${o.demoClubs} demo` : undefined} />
         <Stat label="Approved" value={o.clubsByStatus.approved ?? 0} />
-        <Stat label="Awaiting review" value={(o.clubsByStatus.submitted ?? 0) + (o.clubsByStatus.under_review ?? 0)} />
+        <Link href="/admin/clubs?filter=review" className="no-underline"><Stat label="Awaiting review" value={(o.clubsByStatus.submitted ?? 0) + (o.clubsByStatus.under_review ?? 0)} hint="Open the review queue →" /></Link>
         <Stat label="Audit events (24h)" value={o.auditEvents24h} />
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

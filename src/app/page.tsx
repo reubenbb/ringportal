@@ -27,6 +27,11 @@ export default async function Home() {
           <Link href={session ? '/dashboard' : '/login'} className={buttonClass('primary')}>
             {session ? 'Go to your dashboard' : 'Sign in to your club'}
           </Link>
+          {session ? null : (
+            <Link href="/register" className={buttonClass('secondary')}>
+              Register your club
+            </Link>
+          )}
         </div>
       </main>
       <footer className="border-t border-line">
