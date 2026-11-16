@@ -8,13 +8,14 @@ import { ApiError } from '@/server/http';
 import type { AdminSession } from '@/server/auth/session';
 import type { ClubStatus } from '@/lib/club-status';
 import { CLUB_ACTIONS, type ClubAction } from '@/lib/club-admin';
+import { boxerCards } from '@/server/cross-club';
 
 export const CLUBS_PAGE = 50;
 export type ClubFilter = 'review' | 'approved' | 'attention' | 'closed' | 'all';
 export const CLUB_FILTERS: readonly ClubFilter[] = ['review', 'approved', 'attention', 'closed', 'all'];
 
 const FILTER_SQL: Record<ClubFilter, ReturnType<typeof sql>> = {
-  review: sql`c.status in ('submitted', 'under_review')`,
+  review: sql`(c.status in ('submitted', 'under_review') or exists (select 1 from club_claims k where k.club_id = c.id and k.status = 'pending'))`,
   approved: sql`c.status = 'approved'`,
   attention: sql`(c.status = 'reverification_required' or (c.status = 'approved' and c.affiliation_expires_on < current_date))`,
   closed: sql`c.status in ('rejected', 'suspended', 'draft')`,
@@ -66,6 +67,7 @@ export type AdminClubDetail = {
   claims: { id: string; status: 'pending' | 'approved' | 'rejected'; createdAt: string; directoryClubId: string; directoryName: string; directoryRegion: string | null; directoryPostcode: string | null; directoryClaimedByOther: boolean }[];
   counts: { boxers: number; proposals: number; confirmedBouts: number; conversations: number };
   history: { occurredAt: string; action: string; reason: string | null; actorType: string }[];
+  proposals: { id: string; status: string; version: number; otherClub: string; boxers: string; weightKg: number; proposedDate: string | null; updatedAt: string }[];
 };
 
 export async function getClubForAdmin(id: string): Promise<AdminClubDetail | null> {
@@ -100,8 +102,23 @@ export async function getClubForAdmin(id: string): Promise<AdminClubDetail | nul
       .where(and(eq(auditLog.targetType, 'club'), eq(auditLog.targetId, id)))
       .orderBy(desc(auditLog.id))
       .limit(30);
+    const props = await tx.execute<{ id: string; status: string; current_version: number; other: string; a: string; b: string; weight_kg: string; proposed_date: string | null; updated_at: Date }>(sql`
+      select p.id, p.status, p.current_version, oc.name as other, p.proposing_boxer_id as a, p.receiving_boxer_id as b, v.weight_kg, v.proposed_date::text, p.updated_at
+      from bout_proposals p
+      join bout_proposal_versions v on v.proposal_id = p.id and v.version = p.current_version
+      join clubs oc on oc.id = case when p.proposing_club_id = ${id}::uuid then p.receiving_club_id else p.proposing_club_id end
+      where ${id}::uuid in (p.proposing_club_id, p.receiving_club_id)
+      order by p.updated_at desc limit 25`);
+    // Admins see the same minimised boxer cards as other clubs (junior surnames shortened).
+    const cards = await boxerCards(tx, props.rows.flatMap((r) => [r.a, r.b]));
+    const proposals = props.rows.map((r) => ({
+      id: r.id, status: r.status, version: Number(r.current_version), otherClub: r.other,
+      boxers: `${cards.get(r.a)?.displayName ?? 'Boxer'} v ${cards.get(r.b)?.displayName ?? 'Boxer'}`,
+      weightKg: Number(r.weight_kg), proposedDate: r.proposed_date, updatedAt: new Date(r.updated_at).toISOString(),
+    }));
     return {
       ...c,
+      proposals,
       statusChangedAt: c.statusChangedAt.toISOString(),
       createdAt: c.createdAt.toISOString(),
       logins: logins.map((l) => ({ ...l, lastLoginAt: l.lastLoginAt?.toISOString() ?? null })),
@@ -202,4 +219,23 @@ export async function setClubRegion(admin: AdminSession, id: string, region: str
     return true;
   });
   if (!ok) throw new ApiError('not_found', 'Club not found');
+}
+
+/** Decide a pending directory claim on its own (for clubs that are already approved). Audited. */
+export async function decideClaim(admin: AdminSession, claimId: string, approve: boolean, meta: { ipHash: string }): Promise<void> {
+  const ok = await withAdmin(async (tx) => {
+    const [claim] = await tx.select().from(clubClaims).where(eq(clubClaims.id, claimId)).for('update');
+    if (!claim) return false;
+    if (claim.status !== 'pending') throw new ApiError('conflict', 'This claim has already been decided.');
+    if (approve) {
+      const [d] = await tx.select({ clubId: directoryClubs.clubId, region: directoryClubs.region }).from(directoryClubs).where(eq(directoryClubs.id, claim.directoryClubId)).for('update');
+      if (!d || d.clubId) throw new ApiError('conflict', 'This directory record is already linked to another club.');
+      await tx.update(directoryClubs).set({ clubId: claim.clubId, claimStatus: 'claimed' }).where(eq(directoryClubs.id, claim.directoryClubId));
+      if (d.region) await tx.update(clubs).set({ region: d.region }).where(eq(clubs.id, claim.clubId));
+    }
+    await tx.update(clubClaims).set({ status: approve ? 'approved' : 'rejected', decidedBy: admin.platformUserId, decidedAt: new Date() }).where(eq(clubClaims.id, claimId));
+    await audit(tx, { actorType: 'platform_user', actorId: admin.platformUserId, clubId: claim.clubId, action: approve ? 'club.claim_approved' : 'club.claim_rejected', targetType: 'club', targetId: claim.clubId, metadata: { claimId, directoryClubId: claim.directoryClubId }, ipHash: meta.ipHash });
+    return true;
+  });
+  if (!ok) throw new ApiError('not_found', 'Claim not found');
 }

@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { BoxersSection } from '@/components/boxers/boxers-section';
 import { ClubDecision } from '@/components/clubs/club-decision';
+import { ActionButton } from '@/components/ui/action-button';
+import { formatKg } from '@/lib/boxers';
+import { STATUS_LABEL, STATUS_TONE, formatProposalDate, type ProposalStatus } from '@/lib/proposals';
 import { RegionSelect } from '@/components/clubs/region-select';
 import { Alert } from '@/components/ui/alert';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
@@ -99,6 +102,12 @@ export default async function AdminClubPage({ params }: { params: Promise<{ id: 
                   <span className="flex gap-2">
                     {k.directoryClaimedByOther ? <Badge tone="danger">Already linked to another club</Badge> : null}
                     <Badge tone={k.status === 'approved' ? 'success' : k.status === 'rejected' ? 'danger' : 'warning'}>{k.status === 'pending' ? 'Pending' : k.status === 'approved' ? 'Approved' : 'Turned down'}</Badge>
+                    {k.status === 'pending' && c.status === 'approved' ? (
+                      <>
+                        {k.directoryClaimedByOther ? null : <ActionButton endpoint={`/api/admin/claims/${k.id}`} body={{ approve: true }} label="Approve claim" variant="primary" compact />}
+                        <ActionButton endpoint={`/api/admin/claims/${k.id}`} body={{ approve: false }} label="Turn down" compact />
+                      </>
+                    ) : null}
                   </span>
                 </li>
               ))}
@@ -111,6 +120,40 @@ export default async function AdminClubPage({ params }: { params: Promise<{ id: 
         </Card>
 
         {c.status === 'approved' ? <BoxersSection roster={await rosterForAdmin(c.id)} clubName={c.name} /> : null}
+
+        <Card title="Bout proposals" description="Most recent 25, with current terms. Messages are not shown here; they are read only through a report.">
+          {c.proposals.length === 0 ? (
+            <p className="text-sm text-muted">No proposals involve this club.</p>
+          ) : (
+            <div className="-mx-5 overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <caption className="sr-only">Bout proposals involving this club</caption>
+                <thead>
+                  <tr className="border-b border-line text-left text-xs text-muted">
+                    <th scope="col" className="px-5 py-2 font-semibold">Status</th>
+                    <th scope="col" className="px-2 py-2 font-semibold">Boxers</th>
+                    <th scope="col" className="px-2 py-2 font-semibold">Other club</th>
+                    <th scope="col" className="px-2 py-2 font-semibold">Date</th>
+                    <th scope="col" className="px-2 py-2 text-right font-semibold">Weight</th>
+                    <th scope="col" className="px-5 py-2 font-semibold">Updated</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {c.proposals.map((p) => (
+                    <tr key={p.id}>
+                      <td className="px-5 py-2"><Badge tone={STATUS_TONE[p.status as ProposalStatus]}>{STATUS_LABEL[p.status as ProposalStatus]}</Badge> <span className="text-xs text-muted">v{p.version}</span></td>
+                      <td className="px-2 py-2 text-ink">{p.boxers}</td>
+                      <td className="px-2 py-2 text-ink">{p.otherClub}</td>
+                      <td className="px-2 py-2 text-ink">{formatProposalDate(p.proposedDate)}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-ink">{formatKg(p.weightKg)}</td>
+                      <td className="px-5 py-2 text-muted">{formatDateTime(p.updatedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
 
         <Card title="Decision history">
           {c.history.length === 0 ? (

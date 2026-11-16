@@ -120,6 +120,20 @@
       "when": 1794850462556,
       "tag": "0016_club_region_matchmaking",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794854102239,
+      "tag": "0017_guardian_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794854102940,
+      "tag": "0018_club_claim_own",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,7 @@ import { boxerAvailabilityHistory, boxerPrivate, boxers, clubUsers } from '@/ser
 import { audit } from '@/server/audit';
 import { ApiError } from '@/server/http';
 import type { ClubSession } from '@/server/auth/session';
-import { AVAILABILITY, type Availability } from '@/lib/boxers';
+import { AVAILABILITY, ageOn, type Availability } from '@/lib/boxers';
 
 const count = (label: string) => z.coerce.number({ error: `Enter ${label}` }).int('Whole numbers only').min(0, 'Cannot be negative').max(999, 'Too high');
 
@@ -27,6 +27,8 @@ export const boxerInputSchema = z.object({
   skillsBouts: count('skills bouts'),
   medicalStatus: z.string().trim().max(500).optional().transform((v) => v || null),
   notes: z.string().trim().max(2000).optional().transform((v) => v || null),
+  /** Required for under-18s: the club confirms it holds parent/guardian consent. */
+  guardianConsent: z.union([z.boolean(), z.literal('on')]).optional().transform(Boolean),
 });
 export type BoxerInput = z.infer<typeof boxerInputSchema>;
 export const availabilitySchema = z.enum(AVAILABILITY);
@@ -46,6 +48,7 @@ export type OwnBoxer = {
   availabilityChangedAt: string;
   medicalStatus: string | null;
   notes: string | null;
+  guardianConsentAt: string | null;
   archivedAt: string | null;
 };
 
@@ -64,6 +67,7 @@ const ownColumns = {
   availabilityChangedAt: boxers.availabilityChangedAt,
   medicalStatus: boxerPrivate.medicalStatus,
   notes: boxerPrivate.notes,
+  guardianConsentAt: boxerPrivate.guardianConsentAt,
   archivedAt: boxers.archivedAt,
 };
 
@@ -73,7 +77,11 @@ const toOwn = (r: OwnRow): OwnBoxer => ({
   weightKg: Number(r.weightKg),
   availabilityChangedAt: (r.availabilityChangedAt as Date).toISOString(),
   archivedAt: r.archivedAt ? (r.archivedAt as Date).toISOString() : null,
+  guardianConsentAt: r.guardianConsentAt ? (r.guardianConsentAt as Date).toISOString() : null,
 });
+
+const CONSENT_REQUIRED = 'Confirm that your club holds parent or guardian consent for this boxer';
+const isMinor = (dateOfBirth: string) => ageOn(dateOfBirth) < 18;
 
 type Meta = { ipHash: string };
 
@@ -122,6 +130,8 @@ export async function getOwnBoxer(session: ClubSession, id: string): Promise<{ b
 }
 
 export async function createBoxer(session: ClubSession, input: BoxerInput, meta: Meta): Promise<{ id: string }> {
+  const minor = isMinor(input.dateOfBirth);
+  if (minor && !input.guardianConsent) throw new ApiError('validation_failed', 'Check the highlighted fields', { guardianConsent: CONSENT_REQUIRED });
   return withClub(session.clubId, async (tx) => {
     const [b] = await tx
       .insert(boxers)
@@ -137,7 +147,10 @@ export async function createBoxer(session: ClubSession, input: BoxerInput, meta:
         skillsBouts: input.skillsBouts,
       })
       .returning({ id: boxers.id });
-    await tx.insert(boxerPrivate).values({ boxerId: b!.id, clubId: session.clubId, dateOfBirth: input.dateOfBirth, medicalStatus: input.medicalStatus, notes: input.notes });
+    await tx.insert(boxerPrivate).values({
+      boxerId: b!.id, clubId: session.clubId, dateOfBirth: input.dateOfBirth, medicalStatus: input.medicalStatus, notes: input.notes,
+      ...(minor ? { guardianConsentAt: new Date(), guardianConsentBy: session.clubUserId } : {}),
+    });
     await tx.insert(boxerAvailabilityHistory).values({ boxerId: b!.id, clubId: session.clubId, fromStatus: null, toStatus: 'ready', changedBy: session.clubUserId });
     await audit(tx, { actorType: 'club_user', actorId: session.clubUserId, clubId: session.clubId, action: 'boxer.created', targetType: 'boxer', targetId: b!.id, ipHash: meta.ipHash });
     return { id: b!.id };
@@ -152,18 +165,21 @@ export async function updateBoxer(session: ClubSession, id: string, input: Boxer
     const prev = await loadOwn(tx, session, id, true);
     if (!prev) return false;
     if (prev.archivedAt) throw new ApiError('conflict', 'Restore this boxer before editing');
+    // An under-18 without recorded consent cannot be saved until the club confirms it.
+    const recordConsent = isMinor(input.dateOfBirth) && !prev.guardianConsentAt;
+    if (recordConsent && !input.guardianConsent) throw new ApiError('validation_failed', 'Check the highlighted fields', { guardianConsent: CONSENT_REQUIRED });
     const changed = [...PUBLIC_FIELDS, ...PRIVATE_FIELDS].filter((k) => (prev[k] ?? null) !== (input[k] ?? null));
-    if (!changed.length) return true;
+    if (!changed.length && !recordConsent) return true;
     await tx
       .update(boxers)
       .set(Object.fromEntries(PUBLIC_FIELDS.map((k) => [k, input[k]])))
       .where(eq(boxers.id, id));
     await tx
       .update(boxerPrivate)
-      .set({ dateOfBirth: input.dateOfBirth, medicalStatus: input.medicalStatus, notes: input.notes })
+      .set({ dateOfBirth: input.dateOfBirth, medicalStatus: input.medicalStatus, notes: input.notes, ...(recordConsent ? { guardianConsentAt: new Date(), guardianConsentBy: session.clubUserId } : {}) })
       .where(eq(boxerPrivate.boxerId, id));
     // Field names only: values (DOB, medical, notes) never go into the audit log.
-    await audit(tx, { actorType: 'club_user', actorId: session.clubUserId, clubId: session.clubId, action: 'boxer.updated', targetType: 'boxer', targetId: id, metadata: { fields: changed }, ipHash: meta.ipHash });
+    await audit(tx, { actorType: 'club_user', actorId: session.clubUserId, clubId: session.clubId, action: 'boxer.updated', targetType: 'boxer', targetId: id, metadata: { fields: recordConsent ? [...changed, 'guardianConsent'] : changed }, ipHash: meta.ipHash });
     return true;
   });
   if (!found) throw new ApiError('not_found', 'Boxer not found');

@@ -57,6 +57,7 @@ export default async function BoxerPage({ params, searchParams }: { params: Prom
                   skillsBouts: b.skillsBouts,
                   medicalStatus: b.medicalStatus ?? '',
                   notes: b.notes ?? '',
+                  guardianConsentAt: b.guardianConsentAt,
                 }}
               />
             )}

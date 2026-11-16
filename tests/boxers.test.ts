@@ -120,7 +120,7 @@ describe('cross-club visibility and junior privacy', () => {
     a = await clubCtx();
     b = await clubCtx();
     adultId = (await json<{ id: string }>(await create(a.cookie, base))).id;
-    juniorId = (await json<{ id: string }>(await create(a.cookie, { ...base, firstName: 'Lewis', lastName: 'Carter', dateOfBirth: isoYearsAgo(14), weightKg: 48 }))).id;
+    juniorId = (await json<{ id: string }>(await create(a.cookie, { ...base, firstName: 'Lewis', lastName: 'Carter', dateOfBirth: isoYearsAgo(14), weightKg: 48, guardianConsent: true }))).id;
     const archived = (await json<{ id: string }>(await create(a.cookie, { ...base, firstName: 'Old', lastName: 'Boxer' }))).id;
     await archiveApi(req('POST', `/api/boxers/${archived}/archive`, { cookies: { rp_session: a.cookie }, body: { archived: true } }), idCtx(archived));
   });

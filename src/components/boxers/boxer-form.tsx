@@ -1,5 +1,8 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { ageOn } from '@/lib/boxers';
+import { formatDate } from '@/lib/club-status';
 import { useSubmit } from '@/lib/api-client';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -17,6 +20,8 @@ type Values = {
   skillsBouts: number;
   medicalStatus: string;
   notes: string;
+  /** ISO time consent was recorded, if it has been. */
+  guardianConsentAt?: string | null;
 };
 
 export const EMPTY_BOXER: Values = {
@@ -37,6 +42,8 @@ export function BoxerForm({ boxerId, initial }: { boxerId?: string; initial: Val
   const router = useRouter();
   const { pending, fieldErrors, formError, submit, clearField } = useSubmit<{ id?: string; ok?: boolean }>();
   const today = new Date().toISOString().slice(0, 10);
+  const [dob, setDob] = useState(initial.dateOfBirth);
+  const minor = /^\d{4}-\d{2}-\d{2}$/.test(dob) && ageOn(dob) < 18;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -92,7 +99,10 @@ export function BoxerForm({ boxerId, initial }: { boxerId?: string; initial: Val
           defaultValue={initial.dateOfBirth}
           hint="Private to your club. Other clubs see age only."
           error={fieldErrors.dateOfBirth}
-          onInput={() => clearField('dateOfBirth')}
+          onInput={(e) => {
+            clearField('dateOfBirth');
+            setDob(e.currentTarget.value);
+          }}
         />
         <div className="flex flex-col gap-1.5">
           <label htmlFor="sex" className="text-sm font-semibold text-ink">
@@ -121,6 +131,24 @@ export function BoxerForm({ boxerId, initial }: { boxerId?: string; initial: Val
           onInput={() => clearField('weightKg')}
         />
       </fieldset>
+
+      {minor ? (
+        <fieldset className="rounded-md border border-line p-4">
+          <legend className="px-1 text-sm font-semibold text-ink">Under 18</legend>
+          {initial.guardianConsentAt ? (
+            <p className="text-sm text-ink">Parent or guardian consent was confirmed by your club on {formatDate(initial.guardianConsentAt)}.</p>
+          ) : (
+            <>
+              <label className="flex items-start gap-2 text-sm text-ink">
+                <input type="checkbox" name="guardianConsent" className="mt-1" aria-describedby={fieldErrors.guardianConsent ? 'consent-err' : undefined} onChange={() => clearField('guardianConsent')} />
+                <span>Our club holds consent from this boxer’s parent or guardian for their details to be listed for matchmaking with other verified clubs.</span>
+              </label>
+              {fieldErrors.guardianConsent ? <p id="consent-err" className="mt-1 text-sm font-medium text-danger">✕ {fieldErrors.guardianConsent}</p> : null}
+            </>
+          )}
+          <p className="mt-2 text-xs text-muted">Other clubs see a junior’s first name and surname initial, age, weight and record only. Never add a junior’s contact details anywhere on RingPortal.</p>
+        </fieldset>
+      ) : null}
 
       <fieldset className="grid gap-4 sm:grid-cols-3">
         <legend className="mb-2 text-sm font-semibold text-ink">Competitive record</legend>

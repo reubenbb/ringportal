@@ -349,6 +349,9 @@ export const boxerPrivate = pgTable(
     /** Eligibility/medical status as recorded by the club. Never shown to other clubs. */
     medicalStatus: text('medical_status'),
     notes: text('notes'),
+    /** When the club confirmed it holds parent/guardian consent to list an under-18 boxer, and who confirmed it. */
+    guardianConsentAt: ts('guardian_consent_at'),
+    guardianConsentBy: uuid('guardian_consent_by').references(() => clubUsers.id, { onDelete: 'set null' }),
     updatedAt: ts('updated_at').notNull().defaultNow(),
   },
   (t) => [

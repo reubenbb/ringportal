@@ -1,0 +1,3 @@
+ALTER TABLE "boxer_private" ADD COLUMN "guardian_consent_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "boxer_private" ADD COLUMN "guardian_consent_by" uuid;--> statement-breakpoint
+ALTER TABLE "boxer_private" ADD CONSTRAINT "boxer_private_guardian_consent_by_club_users_id_fk" FOREIGN KEY ("guardian_consent_by") REFERENCES "public"."club_users"("id") ON DELETE set null ON UPDATE no action;

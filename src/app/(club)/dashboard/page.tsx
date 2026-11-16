@@ -5,6 +5,7 @@ import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { CLUB_STATUS, formatDate } from '@/lib/club-status';
 import { requireClubPage } from '@/server/auth/guards';
 import { getClubOverview } from '@/server/club/queries';
+import { ClaimForm } from '@/components/clubs/claim-form';
 import { notificationSummary } from '@/server/messaging/service';
 import { listProposals } from '@/server/proposals/service';
 import { STATUS_LABEL, STATUS_TONE } from '@/lib/proposals';
@@ -84,6 +85,20 @@ export default async function DashboardPage() {
               <dt className="text-muted">Affiliation expires</dt>
               <dd className="text-ink">{club.affiliationExpiresOn ? formatDate(club.affiliationExpiresOn) : 'Not recorded'}</dd>
             </dl>
+          </Card>
+          <Card title="England Boxing directory" description="Link your club to its record in the England Boxing directory.">
+            {club.claim && club.claim.status !== 'rejected' ? (
+              <p className="text-sm text-ink">
+                <Badge tone={club.claim.status === 'approved' ? 'success' : 'warning'}>{club.claim.status === 'approved' ? 'Linked' : 'Claim waiting for review'}</Badge>{' '}
+                {approved ? <Link href={`/clubs/${club.claim.directorySlug}`}>{club.claim.directoryName}</Link> : club.claim.directoryName}
+              </p>
+            ) : (
+              <>
+                {club.claim ? <p className="mb-3 text-sm text-muted">Your claim on {club.claim.directoryName} was not approved. You can claim a different record.</p> : null}
+                {club.isDemo ? <p className="text-sm text-muted">Demonstration clubs cannot claim a real club’s record.</p> : <ClaimForm />}
+              </>
+            )}
+            <p className="mt-3 text-sm text-muted">Region: <span className="text-ink">{club.region ?? 'Not recorded'}</span></p>
           </Card>
           <Card title="Club login" description="One shared login for your authorised club staff.">
             <dl className="grid grid-cols-[minmax(0,10rem)_1fr] gap-x-4 gap-y-3 text-sm">
