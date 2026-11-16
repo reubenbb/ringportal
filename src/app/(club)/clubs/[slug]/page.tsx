@@ -36,6 +36,7 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ sl
             roster={linked ? await rosterForClubViewer(session, linked.id) : null}
             clubName={profile.name}
             linkedProfileHref={linked ? `/clubs/ringportal/${linked.slug}` : undefined}
+            showActions={Boolean(linked) && linked?.id !== session.clubId}
           />
         );
       })()}

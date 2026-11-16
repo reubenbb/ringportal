@@ -96,3 +96,31 @@ export async function json<T = Record<string, unknown>>(res: Response): Promise<
 export const ctx = { params: Promise.resolve({}) };
 export const idCtx = (id: string) => ({ params: Promise.resolve({ id }) });
 export { randomUUID };
+
+/** Fixture boxer inserted directly (owner connection), with its private row and first availability entry. */
+export async function createBoxer(
+  clubId: string,
+  opts: { firstName?: string; lastName?: string; sex?: 'male' | 'female'; dob?: string; weightKg?: number; availability?: string; archived?: boolean } = {},
+) {
+  const { rows } = await owner.query<{ id: string }>(
+    `insert into boxers (club_id, first_name, last_name, sex, weight_kg, availability, archived_at)
+     values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+    [clubId, opts.firstName ?? 'Test', opts.lastName ?? `Boxer${uid()}`, opts.sex ?? 'male', opts.weightKg ?? 64, opts.availability ?? 'ready', opts.archived ? new Date() : null],
+  );
+  const id = rows[0]!.id;
+  await owner.query(`insert into boxer_private (boxer_id, club_id, date_of_birth) values ($1, $2, $3)`, [id, clubId, opts.dob ?? '2000-01-01']);
+  return id;
+}
+
+export function yearsAgo(years: number): string {
+  const d = new Date();
+  d.setUTCFullYear(d.getUTCFullYear() - years);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+export function daysFromNow(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}

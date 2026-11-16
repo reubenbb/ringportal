@@ -5,33 +5,53 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrandLockup, BrandMark } from '@/components/brand/logo';
 import { NAV_COOKIE, writePreferenceCookie, type NavState } from '@/lib/preferences';
 import { Icon, type IconName } from './icons';
+import { useNotificationCounts, type CountKey } from './notification-counts';
 
-export type NavItem = { href: string; label: string; icon: IconName; exact?: boolean };
+export type NavItem = { href: string; label: string; icon: IconName; exact?: boolean; badge?: CountKey };
 
 function isActive(pathname: string, item: NavItem): boolean {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-function NavLinks({ items, collapsed, onNavigate }: { items: NavItem[]; collapsed: boolean; onNavigate?: () => void }) {
+type Counts = Partial<Record<CountKey, number>>;
+
+function NavLinks({ items, collapsed, counts, onNavigate }: { items: NavItem[]; collapsed: boolean; counts: Counts; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <ul className="flex flex-col gap-1">
       {items.map((item) => {
         const active = isActive(pathname, item);
+        const count = item.badge ? (counts[item.badge] ?? 0) : 0;
+        const countText = count > 0 ? `, ${count} ${item.badge === 'messages' ? 'unread' : 'need your action'}` : '';
         return (
           <li key={item.href}>
             <Link
               href={item.href}
               onClick={onNavigate}
               aria-current={active ? 'page' : undefined}
-              aria-label={collapsed ? item.label : undefined}
+              aria-label={collapsed ? `${item.label}${countText}` : undefined}
               className={`rp-nav-link relative flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors ${
                 active ? 'bg-nav-active text-link' : 'text-muted hover:bg-surface-2 hover:text-ink'
               } ${collapsed ? 'justify-center px-0' : ''}`}
             >
               {active ? <span aria-hidden="true" className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-electric" /> : null}
-              <Icon name={item.icon} className="shrink-0" />
-              {collapsed ? <span className="rp-nav-tip" aria-hidden="true">{item.label}</span> : <span className="truncate">{item.label}</span>}
+              <span className="relative shrink-0">
+                <Icon name={item.icon} />
+                {collapsed && count > 0 ? <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-electric px-1 text-center text-[10px] leading-4 font-bold text-white">{count > 99 ? '99+' : count}</span> : null}
+              </span>
+              {collapsed ? (
+                <span className="rp-nav-tip" aria-hidden="true">{item.label}</span>
+              ) : (
+                <>
+                  <span className="truncate">{item.label}</span>
+                  {count > 0 ? (
+                    <span className="ml-auto min-w-6 rounded-full bg-electric px-1.5 text-center text-xs leading-5 font-bold text-white">
+                      <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
+                      <span className="sr-only">{countText}</span>
+                    </span>
+                  ) : null}
+                </>
+              )}
             </Link>
           </li>
         );
@@ -54,6 +74,8 @@ export function Sidebar({ items, initialNav, homeHref, sectionLabel, contentId }
   const drawerRef = useRef<HTMLDivElement>(null);
   const openBtnRef = useRef<HTMLButtonElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const counts = useNotificationCounts(items.some((i) => i.badge));
+  const totalCount = (counts.messages ?? 0) + (counts.proposals ?? 0);
 
   function toggleNav() {
     const next: NavState = collapsed ? 'expanded' : 'collapsed';
@@ -117,7 +139,7 @@ export function Sidebar({ items, initialNav, homeHref, sectionLabel, contentId }
         </div>
         {/* Collapsed: overflow stays visible so tooltips are not clipped (few items, no scrolling needed). */}
         <nav className={`flex-1 px-2.5 py-4 ${collapsed ? '' : 'overflow-y-auto'}`}>
-          <NavLinks items={items} collapsed={collapsed} />
+          <NavLinks items={items} collapsed={collapsed} counts={counts} />
         </nav>
         <div className="border-t border-line p-2.5">
           <button
@@ -153,8 +175,11 @@ export function Sidebar({ items, initialNav, homeHref, sectionLabel, contentId }
           aria-controls="rp-drawer"
           className="flex size-11 items-center justify-center rounded-md text-ink hover:bg-surface-2"
         >
-          <Icon name="menu" />
-          <span className="sr-only">Open navigation</span>
+          <span className="relative">
+            <Icon name="menu" />
+            {totalCount > 0 ? <span aria-hidden="true" className="absolute -right-1 -top-1 size-2.5 rounded-full bg-electric" /> : null}
+          </span>
+          <span className="sr-only">Open navigation{totalCount > 0 ? `, ${totalCount} new` : ''}</span>
         </button>
         <Link href={homeHref} className="text-ink" aria-label="RingPortal home">
           <BrandLockup className="h-4 w-auto" aria-hidden="true" />
@@ -181,7 +206,7 @@ export function Sidebar({ items, initialNav, homeHref, sectionLabel, contentId }
             </button>
           </div>
           <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label={sectionLabel}>
-            <NavLinks items={items} collapsed={false} onNavigate={closeDrawer} />
+            <NavLinks items={items} collapsed={false} counts={counts} onNavigate={closeDrawer} />
           </nav>
         </div>
       </div>

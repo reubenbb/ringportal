@@ -5,6 +5,9 @@ import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { CLUB_STATUS, formatDate } from '@/lib/club-status';
 import { requireClubPage } from '@/server/auth/guards';
 import { getClubOverview } from '@/server/club/queries';
+import { notificationSummary } from '@/server/messaging/service';
+import { listProposals } from '@/server/proposals/service';
+import { STATUS_LABEL, STATUS_TONE } from '@/lib/proposals';
 
 export const metadata: Metadata = { title: 'Overview' };
 
@@ -13,6 +16,8 @@ export default async function DashboardPage() {
   const club = await getClubOverview(session);
   if (!club) return <Alert tone="danger">We could not load your club. Sign out and sign in again.</Alert>;
   const status = CLUB_STATUS[club.status];
+  const approved = club.status === 'approved';
+  const [summary, waiting] = approved ? await Promise.all([notificationSummary(session), listProposals(session, 'action')]) : [null, null];
 
   return (
     <>
@@ -28,6 +33,40 @@ export default async function DashboardPage() {
             {status.explain}
             {club.statusReason ? <> Reason: {club.statusReason}</> : null}
           </Alert>
+        ) : null}
+        {summary && waiting ? (
+          <Card title="Needs your attention" description="Updated as other clubs respond.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link href="/proposals?tab=action" className="rounded-md border border-line px-4 py-3 text-ink no-underline hover:bg-surface-2">
+                <p className="rp-eyebrow">Bout proposals</p>
+                <p className="rp-display mt-1 text-3xl tabular-nums">{summary.proposalsNeedingAction}</p>
+                <p className="text-sm text-muted">{summary.proposalsNeedingAction === 1 ? 'proposal needs' : 'proposals need'} your response or confirmation</p>
+              </Link>
+              <Link href="/messages" className="rounded-md border border-line px-4 py-3 text-ink no-underline hover:bg-surface-2">
+                <p className="rp-eyebrow">Messages</p>
+                <p className="rp-display mt-1 text-3xl tabular-nums">{summary.unreadMessages}</p>
+                <p className="text-sm text-muted">
+                  unread {summary.unreadMessages === 1 ? 'message' : 'messages'}
+                  {summary.unreadConversations > 1 ? ` in ${summary.unreadConversations} conversations` : ''}
+                </p>
+              </Link>
+            </div>
+            {waiting.items.length ? (
+              <ul className="mt-4 divide-y divide-line border-t border-line">
+                {waiting.items.slice(0, 5).map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/proposals/${p.id}`} className="flex flex-wrap items-center gap-2 py-2.5 text-sm text-ink no-underline hover:text-link">
+                      <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>
+                      <span className="font-semibold">
+                        {p.myBoxer?.displayName ?? 'Boxer'} v {p.theirBoxer?.displayName ?? 'Boxer'}
+                      </span>
+                      <span className="text-muted">· {p.otherClub.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Card>
         ) : null}
         <div className="grid gap-6 lg:grid-cols-2">
           <Card title="Verification">

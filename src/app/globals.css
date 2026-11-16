@@ -183,6 +183,23 @@
     display: none;
   }
 
+  /* Modal confirmation dialogs (native <dialog> + showModal: focus trap, Escape and inert page are built in). */
+  .rp-dialog {
+    margin: auto;
+    width: min(92vw, 34rem);
+    max-height: 90dvh;
+    overflow-y: auto;
+    border: 1px solid var(--rp-border);
+    border-radius: var(--radius-lg);
+    background: var(--rp-surface);
+    color: var(--rp-text);
+    padding: 0;
+    box-shadow: 0 24px 60px rgb(5 10 20 / 0.3);
+    &::backdrop {
+      background: rgb(5 10 20 / 0.55);
+    }
+  }
+
   /* Mobile navigation drawer (popover=manual, see Sidebar component). */
   .rp-drawer {
     margin: 0;

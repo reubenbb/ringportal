@@ -8,6 +8,8 @@ const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview', icon: 'overview', exact: true },
   { href: '/boxers', label: 'My boxers', icon: 'boxers' },
   { href: '/clubs', label: 'Club directory', icon: 'directory' },
+  { href: '/proposals', label: 'Bout proposals', icon: 'proposals', badge: 'proposals' },
+  { href: '/messages', label: 'Messages', icon: 'messages', badge: 'messages' },
   { href: '/account', label: 'Account security', icon: 'shield' },
 ];
 

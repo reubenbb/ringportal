@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BoxersSection } from '@/components/boxers/boxers-section';
 import { NotApprovedNotice } from '@/components/boxers/not-approved';
+import { MessageButton } from '@/components/messaging/conversation-buttons';
 import { Badge, PageHeader } from '@/components/ui/card';
 import { requireApprovedClubPage } from '@/server/auth/guards';
 import { listApprovedClubsForClub, rosterForClubViewer } from '@/server/boxers/service';
@@ -38,8 +39,9 @@ export default async function RingPortalClubPage({ params }: { params: Promise<{
             {club.isDemo ? <Badge tone="warning">Demo data</Badge> : null}
           </span>
         }
+        actions={<MessageButton target={{ kind: 'general', clubId: club.id }} label="Message club" variant="primary" />}
       />
-      <BoxersSection roster={roster} clubName={club.name} />
+      <BoxersSection roster={roster} clubName={club.name} showActions />
     </>
   );
 }

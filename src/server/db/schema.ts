@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   bigserial,
   boolean,
   check,
@@ -391,5 +392,197 @@ export const auditLog = pgTable(
     index('audit_log_club_idx').on(t.clubId, t.occurredAt),
     index('audit_log_actor_idx').on(t.actorId, t.occurredAt),
     index('audit_log_action_idx').on(t.action, t.occurredAt),
+  ],
+);
+
+// Bout proposals -------------------------------------------------------------
+// A proposal is between two approved clubs about one boxer from each.
+// Terms live in immutable, numbered versions. Acceptance and each club's final
+// confirmation apply to one version only, so any new version resets them.
+
+export const boutType = pgEnum('bout_type', ['competitive', 'skills']);
+export const proposalStatus = pgEnum('proposal_status', [
+  'sent',
+  'negotiating',
+  'accepted_in_principle',
+  'awaiting_confirmation',
+  'confirmed',
+  'declined',
+  'withdrawn',
+]);
+export const proposalEvent = pgEnum('proposal_event', ['created', 'revised', 'accepted', 'confirmed', 'bout_confirmed', 'declined', 'withdrawn']);
+
+export const boutProposals = pgTable(
+  'bout_proposals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    proposingClubId: uuid('proposing_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    receivingClubId: uuid('receiving_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    proposingBoxerId: uuid('proposing_boxer_id')
+      .notNull()
+      .references(() => boxers.id, { onDelete: 'restrict' }),
+    receivingBoxerId: uuid('receiving_boxer_id')
+      .notNull()
+      .references(() => boxers.id, { onDelete: 'restrict' }),
+    status: proposalStatus('status').notNull().default('sent'),
+    currentVersion: smallint('current_version').notNull().default(1),
+    statusChangedAt: ts('status_changed_at').notNull().defaultNow(),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('bout_proposals_proposing_idx').on(t.proposingClubId, t.updatedAt),
+    index('bout_proposals_receiving_idx').on(t.receivingClubId, t.updatedAt),
+    // One open negotiation per pair of boxers (either direction). Confirmed, declined and withdrawn do not block a new one.
+    uniqueIndex('bout_proposals_open_pair_uq')
+      .on(sql`least(${t.proposingBoxerId}, ${t.receivingBoxerId})`, sql`greatest(${t.proposingBoxerId}, ${t.receivingBoxerId})`)
+      .where(sql`${t.status} in ('sent', 'negotiating', 'accepted_in_principle', 'awaiting_confirmation')`),
+    check('bout_proposals_distinct_clubs', sql`${t.proposingClubId} <> ${t.receivingClubId}`),
+    check('bout_proposals_distinct_boxers', sql`${t.proposingBoxerId} <> ${t.receivingBoxerId}`),
+    check('bout_proposals_version_positive', sql`${t.currentVersion} >= 1`),
+  ],
+);
+
+export const boutProposalVersions = pgTable(
+  'bout_proposal_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    proposalId: uuid('proposal_id')
+      .notNull()
+      .references(() => boutProposals.id, { onDelete: 'restrict' }),
+    version: smallint('version').notNull(),
+    authorClubId: uuid('author_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    proposedDate: date('proposed_date', { mode: 'string' }),
+    weightKg: numeric('weight_kg', { precision: 5, scale: 2, mode: 'number' }).notNull(),
+    boutType: boutType('bout_type').notNull(),
+    travel: text('travel'),
+    terms: text('terms'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('bout_proposal_versions_uq').on(t.proposalId, t.version),
+    check('bout_proposal_versions_weight_range', sql`${t.weightKg} between 20 and 200`),
+    check('bout_proposal_versions_text_len', sql`coalesce(char_length(${t.travel}), 0) <= 500 and coalesce(char_length(${t.terms}), 0) <= 1000`),
+  ],
+);
+
+export const boutProposalConfirmations = pgTable(
+  'bout_proposal_confirmations',
+  {
+    proposalId: uuid('proposal_id')
+      .notNull()
+      .references(() => boutProposals.id, { onDelete: 'restrict' }),
+    version: smallint('version').notNull(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    confirmedBy: uuid('confirmed_by').references(() => clubUsers.id, { onDelete: 'set null' }),
+    confirmedAt: ts('confirmed_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.proposalId, t.version, t.clubId] })],
+);
+
+export const boutProposalEvents = pgTable(
+  'bout_proposal_events',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    proposalId: uuid('proposal_id')
+      .notNull()
+      .references(() => boutProposals.id, { onDelete: 'restrict' }),
+    version: smallint('version').notNull(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    actorId: uuid('actor_id').references(() => clubUsers.id, { onDelete: 'set null' }),
+    event: proposalEvent('event').notNull(),
+    fromStatus: proposalStatus('from_status'),
+    toStatus: proposalStatus('to_status').notNull(),
+    occurredAt: ts('occurred_at').notNull().defaultNow(),
+  },
+  (t) => [index('bout_proposal_events_proposal_idx').on(t.proposalId, t.id)],
+);
+
+// Club-to-club messaging ------------------------------------------------------
+// A conversation is always between exactly two clubs (stored low/high so a pair
+// is unique). It is general, about one boxer, or attached to one proposal.
+
+export const conversationKind = pgEnum('conversation_kind', ['general', 'boxer', 'proposal']);
+
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clubLowId: uuid('club_low_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    clubHighId: uuid('club_high_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    kind: conversationKind('kind').notNull(),
+    boxerId: uuid('boxer_id').references(() => boxers.id, { onDelete: 'restrict' }),
+    proposalId: uuid('proposal_id').references(() => boutProposals.id, { onDelete: 'restrict' }),
+    startedByClubId: uuid('started_by_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    lastMessageAt: ts('last_message_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('conversations_low_idx').on(t.clubLowId, t.lastMessageAt),
+    index('conversations_high_idx').on(t.clubHighId, t.lastMessageAt),
+    uniqueIndex('conversations_general_uq').on(t.clubLowId, t.clubHighId).where(sql`${t.kind} = 'general'`),
+    uniqueIndex('conversations_boxer_uq').on(t.clubLowId, t.clubHighId, t.boxerId).where(sql`${t.kind} = 'boxer'`),
+    uniqueIndex('conversations_proposal_uq').on(t.proposalId).where(sql`${t.kind} = 'proposal'`),
+    check('conversations_ordered_pair', sql`${t.clubLowId} < ${t.clubHighId}`),
+    check('conversations_started_by_party', sql`${t.startedByClubId} in (${t.clubLowId}, ${t.clubHighId})`),
+    check(
+      'conversations_kind_links',
+      sql`(${t.kind} = 'general' and ${t.boxerId} is null and ${t.proposalId} is null)
+        or (${t.kind} = 'boxer' and ${t.boxerId} is not null and ${t.proposalId} is null)
+        or (${t.kind} = 'proposal' and ${t.proposalId} is not null and ${t.boxerId} is null)`,
+    ),
+  ],
+);
+
+/** Each club's own read position and archive flag. A club never sees the other club's row. */
+export const conversationClubState = pgTable(
+  'conversation_club_state',
+  {
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'restrict' }),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    lastReadMessageId: bigint('last_read_message_id', { mode: 'number' }).notNull().default(0),
+    archivedAt: ts('archived_at'),
+  },
+  (t) => [primaryKey({ columns: [t.conversationId, t.clubId] })],
+);
+
+/** Immutable. The application role may insert and read, never update or delete. */
+export const messages = pgTable(
+  'messages',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'restrict' }),
+    senderClubId: uuid('sender_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    senderUserId: uuid('sender_user_id').references(() => clubUsers.id, { onDelete: 'set null' }),
+    body: text('body').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('messages_conversation_idx').on(t.conversationId, t.id),
+    check('messages_body_len', sql`char_length(${t.body}) between 1 and 2000`),
   ],
 );

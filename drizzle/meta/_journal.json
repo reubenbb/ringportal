@@ -50,6 +50,20 @@
       "when": 1794826684944,
       "tag": "0006_club_listing",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794837144637,
+      "tag": "0007_proposals_messaging",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794837162180,
+      "tag": "0008_proposals_messaging_security",
+      "breakpoints": true
     }
   ]
 }

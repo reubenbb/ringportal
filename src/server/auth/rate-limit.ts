@@ -16,6 +16,9 @@ export const LIMITS = {
   resetConfirmIp: { name: 'reset-confirm-ip', max: 10, windowSeconds: 3600 },
   passwordChange: { name: 'password-change', max: 5, windowSeconds: 900 },
   sensitiveAction: { name: 'sensitive', max: 30, windowSeconds: 900 },
+  proposalAction: { name: 'proposal-action', max: 60, windowSeconds: 900 },
+  messageSend: { name: 'message-send', max: 40, windowSeconds: 300 },
+  conversationOpen: { name: 'conversation-open', max: 30, windowSeconds: 900 },
 } satisfies Record<string, Limit>;
 
 export type RateResult = { allowed: boolean; retryAfterSeconds: number };
