@@ -8,6 +8,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -286,6 +287,88 @@ export const directoryClubs = pgTable(
     ),
     check('directory_clubs_claim_consistent', sql`(${t.claimStatus} = 'claimed') = (${t.clubId} is not null)`),
   ],
+);
+
+// ---------------------------------------------------------------------------
+// Boxers. Owned by their club. Matchmaking-safe fields live in `boxers`;
+// date of birth, medical/eligibility status and internal notes live in
+// `boxer_private`, which only the owning club (and admins) can read.
+// Other clubs only ever see a minimised projection (club_boxer_roster()).
+
+export const boxerSex = pgEnum('boxer_sex', ['male', 'female']);
+export const boxerAvailability = pgEnum('boxer_availability', ['ready', 'injured_medical', 'provisionally_arranged', 'confirmed', 'inactive']);
+
+export const boxers = pgTable(
+  'boxers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    firstName: text('first_name').notNull(),
+    lastName: text('last_name').notNull(),
+    sex: boxerSex('sex').notNull(),
+    weightKg: numeric('weight_kg', { precision: 5, scale: 2, mode: 'number' }).notNull(),
+    competitiveWins: smallint('competitive_wins').notNull().default(0),
+    competitiveLosses: smallint('competitive_losses').notNull().default(0),
+    competitiveDraws: smallint('competitive_draws').notNull().default(0),
+    /** Separate from the competitive record and never added to it. */
+    skillsBouts: smallint('skills_bouts').notNull().default(0),
+    availability: boxerAvailability('availability').notNull().default('ready'),
+    availabilityChangedAt: ts('availability_changed_at').notNull().defaultNow(),
+    archivedAt: ts('archived_at'),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('boxers_club_idx').on(t.clubId),
+    index('boxers_matching_idx').on(t.sex, t.weightKg),
+    check('boxers_name_len', sql`char_length(${t.firstName}) between 1 and 60 and char_length(${t.lastName}) between 1 and 60`),
+    check('boxers_weight_range', sql`${t.weightKg} between 20 and 200`),
+    check(
+      'boxers_record_non_negative',
+      sql`${t.competitiveWins} >= 0 and ${t.competitiveLosses} >= 0 and ${t.competitiveDraws} >= 0 and ${t.skillsBouts} >= 0`,
+    ),
+  ],
+);
+
+export const boxerPrivate = pgTable(
+  'boxer_private',
+  {
+    boxerId: uuid('boxer_id')
+      .primaryKey()
+      .references(() => boxers.id, { onDelete: 'cascade' }),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    dateOfBirth: date('date_of_birth', { mode: 'string' }).notNull(),
+    /** Eligibility/medical status as recorded by the club. Never shown to other clubs. */
+    medicalStatus: text('medical_status'),
+    notes: text('notes'),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('boxer_private_club_idx').on(t.clubId),
+    check('boxer_private_dob_range', sql`${t.dateOfBirth} >= date '1940-01-01'`),
+  ],
+);
+
+export const boxerAvailabilityHistory = pgTable(
+  'boxer_availability_history',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    boxerId: uuid('boxer_id')
+      .notNull()
+      .references(() => boxers.id, { onDelete: 'cascade' }),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    fromStatus: boxerAvailability('from_status'),
+    toStatus: boxerAvailability('to_status').notNull(),
+    changedBy: uuid('changed_by').references(() => clubUsers.id, { onDelete: 'set null' }),
+    changedAt: ts('changed_at').notNull().defaultNow(),
+  },
+  (t) => [index('boxer_availability_history_boxer_idx').on(t.boxerId, t.changedAt)],
 );
 
 /** Append-only. The application role may insert and read, never update or delete. */

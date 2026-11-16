@@ -8,6 +8,8 @@ import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/club-status';
 import { requireAdminPage } from '@/server/auth/guards';
 import { getDirectoryProfileForAdmin } from '@/server/directory/profiles';
+import { BoxersSection } from '@/components/boxers/boxers-section';
+import { listApprovedClubsForAdmin, rosterForAdmin } from '@/server/boxers/service';
 
 export const metadata: Metadata = { title: 'Directory club' };
 
@@ -24,6 +26,8 @@ export default async function AdminDirectoryClubPage({ params }: { params: Promi
   const data = await getDirectoryProfileForAdmin(id.data);
   if (!data) notFound();
   const { profile: p, history } = data;
+  const linked = p.clubId ? (await listApprovedClubsForAdmin()).find((c) => c.id === p.clubId) : undefined;
+  const roster = linked ? await rosterForAdmin(linked.id) : null;
 
   return (
     <>
@@ -32,6 +36,7 @@ export default async function AdminDirectoryClubPage({ params }: { params: Promi
       </Link>
       <PageHeader eyebrow="Directory profile" title={p.name} description={`${p.region ?? 'Region not listed'} · England Boxing ID ${p.sourceRef}`} />
       <ProfileView p={p} addressAction={<AddressVerify key={`${p.id}-${p.addressStatus}`} id={p.id} status={p.addressStatus} hasAddress={Boolean(p.address)} />} />
+      <BoxersSection roster={roster} clubName={p.name} />
       <Card title="Verification history" className="mt-6">
         {history.length === 0 ? (
           <p className="text-sm text-muted">No changes since import. First imported {formatDateTime(p.firstImportedAt)}.</p>

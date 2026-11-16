@@ -7,6 +7,8 @@ import { buttonClass } from '@/components/ui/button';
 import { Card, PageHeader } from '@/components/ui/card';
 import { requireApprovedClubPage } from '@/server/auth/guards';
 import { listDirectoryForClub } from '@/server/directory/profiles';
+import { listApprovedClubsForClub } from '@/server/boxers/service';
+import { Badge } from '@/components/ui/card';
 
 export const metadata: Metadata = { title: 'Club directory' };
 
@@ -36,7 +38,11 @@ export default async function ClubDirectoryPage({ searchParams }: { searchParams
     );
   }
   const p = params.parse(await searchParams);
-  const list = await listDirectoryForClub(session, { q: p.q || undefined, region: p.region || undefined, page: p.page });
+  const [list, members] = await Promise.all([
+    listDirectoryForClub(session, { q: p.q || undefined, region: p.region || undefined, page: p.page }),
+    listApprovedClubsForClub(session),
+  ]);
+  const others = members.filter((c) => c.id !== session.clubId);
   const pages = Math.max(1, Math.ceil(list.total / list.pageSize));
   const qs = (page: number) => {
     const s = new URLSearchParams();
@@ -50,6 +56,31 @@ export default async function ClubDirectoryPage({ searchParams }: { searchParams
   return (
     <>
       {header}
+      <Card title="Clubs on RingPortal" description="Verified clubs that manage their own boxers on RingPortal." className="mb-6">
+        {others.length === 0 ? (
+          <p className="text-sm text-muted">No other verified clubs yet.</p>
+        ) : (
+          <ul className="-mx-5 -my-4 divide-y divide-line">
+            {others.map((c) => (
+              <li key={c.id}>
+                <Link href={`/clubs/ringportal/${c.slug}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 no-underline hover:bg-surface-2">
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-ink">{c.name}</span>
+                    <span className="block text-sm text-muted">
+                      {c.governingBody} · {c.activeBoxers} {c.activeBoxers === 1 ? 'boxer' : 'boxers'}
+                    </span>
+                  </span>
+                  <span className="inline-flex gap-1.5">
+                    <Badge tone="success">Verified club</Badge>
+                    {c.isDemo ? <Badge tone="warning">Demo data</Badge> : null}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      <h2 className="mb-3 text-base font-semibold text-ink">England Boxing club directory</h2>
       <Card>
         <form method="get" className="mb-4 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1.5">

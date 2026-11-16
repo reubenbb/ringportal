@@ -22,6 +22,7 @@ const profileColumns = {
   website: directoryClubs.website,
   socialReference: directoryClubs.socialReference,
   claimStatus: directoryClubs.claimStatus,
+  clubId: directoryClubs.clubId,
   firstImportedAt: directoryClubs.firstImportedAt,
   lastImportedAt: directoryClubs.lastImportedAt,
 };
@@ -44,6 +45,8 @@ export type DirectoryProfile = {
   website: string | null;
   socialReference: string | null;
   claimStatus: 'unclaimed' | 'claimed';
+  /** RingPortal club that claimed this profile, if any. */
+  clubId: string | null;
   firstImportedAt: string;
   lastImportedAt: string;
 };

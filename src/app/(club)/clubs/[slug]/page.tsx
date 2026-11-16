@@ -6,6 +6,8 @@ import { Alert } from '@/components/ui/alert';
 import { PageHeader } from '@/components/ui/card';
 import { requireApprovedClubPage } from '@/server/auth/guards';
 import { getDirectoryProfileForClub } from '@/server/directory/profiles';
+import { BoxersSection } from '@/components/boxers/boxers-section';
+import { listApprovedClubsForClub, rosterForClubViewer } from '@/server/boxers/service';
 
 export const metadata: Metadata = { title: 'Club profile' };
 
@@ -27,6 +29,16 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ sl
       </Link>
       <PageHeader eyebrow="Club profile" title={profile.name} description={profile.region ?? undefined} />
       <ProfileView p={profile} />
+      {await (async () => {
+        const linked = profile.clubId ? (await listApprovedClubsForClub(session)).find((c) => c.id === profile.clubId) : undefined;
+        return (
+          <BoxersSection
+            roster={linked ? await rosterForClubViewer(session, linked.id) : null}
+            clubName={profile.name}
+            linkedProfileHref={linked ? `/clubs/ringportal/${linked.slug}` : undefined}
+          />
+        );
+      })()}
     </>
   );
 }

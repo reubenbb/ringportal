@@ -6,6 +6,7 @@ import { CLUB_STATUS } from '@/lib/club-status';
 
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview', icon: 'overview', exact: true },
+  { href: '/boxers', label: 'My boxers', icon: 'boxers' },
   { href: '/clubs', label: 'Club directory', icon: 'directory' },
   { href: '/account', label: 'Account security', icon: 'shield' },
 ];

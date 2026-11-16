@@ -29,6 +29,27 @@
       "when": 1794528625793,
       "tag": "0003_directory_security",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794826532950,
+      "tag": "0004_boxers",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794826533630,
+      "tag": "0005_boxers_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794826684944,
+      "tag": "0006_club_listing",
+      "breakpoints": true
     }
   ]
 }
