@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { AuthLayout } from '@/components/auth/auth-layout';
 import { RegisterForm } from '@/components/clubs/register-form';
 import { getClubSession } from '@/server/auth/guards';
-import { listGoverningBodiesPublic, listRegionsPublic } from '@/server/clubs/registration';
+import { listRegionsPublic } from '@/server/clubs/registration';
 
 export const metadata: Metadata = { title: 'Register your club' };
 
@@ -13,9 +13,9 @@ export default async function RegisterPage() {
     <AuthLayout
       eyebrow="Join RingPortal"
       title="Register your club"
-      intro="Every club is checked by an administrator before it can see other clubs’ boxers, message or propose bouts."
+      intro="RingPortal is for clubs affiliated to England Boxing. Every club is checked by an administrator before it can see other clubs’ boxers, message or propose bouts."
     >
-      <RegisterForm bodies={await listGoverningBodiesPublic()} regions={await listRegionsPublic()} />
+      <RegisterForm regions={await listRegionsPublic()} />
     </AuthLayout>
   );
 }

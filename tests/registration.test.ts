@@ -52,11 +52,11 @@ describe('club registration', () => {
     const res = await register(body({ clubName: 'x', governingBodyId: 999, email: 'nope', password: 'short', authorised: false, affiliationNumber: '<script>' }));
     expect(res.status).toBe(422);
     expect(Object.keys(await fields(res)).sort()).toEqual(['affiliationNumber', 'authorised', 'clubName', 'email', 'password']);
-    expect(await fields(await register(body({ governingBodyId: 999 })))).toHaveProperty('governingBodyId');
-    const b = body({ status: 'approved', isDemo: true, is_demo: true });
+    // England Boxing only: any other governing body in the request is ignored.
+    const b = body({ status: 'approved', isDemo: true, is_demo: true, governingBodyId: 2 });
     expect((await register(b)).status).toBe(201);
-    const { rows } = await owner.query(`select c.status, c.is_demo from clubs c join club_users u on u.club_id = c.id where u.email = $1`, [b.email]);
-    expect(rows[0]).toEqual({ status: 'submitted', is_demo: false });
+    const { rows } = await owner.query(`select c.status, c.is_demo, c.governing_body_id from clubs c join club_users u on u.club_id = c.id where u.email = $1`, [b.email]);
+    expect(rows[0]).toEqual({ status: 'submitted', is_demo: false, governing_body_id: 1 });
   });
 
   it('prevents duplicate emails, affiliation numbers and competing directory claims', async () => {

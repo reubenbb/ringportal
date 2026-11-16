@@ -2,7 +2,8 @@ import 'server-only';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { withClub } from '@/server/db/client';
-import { directoryClubs, governingBodies } from '@/server/db/schema';
+import { directoryClubs } from '@/server/db/schema';
+import { ENGLAND_BOXING_ID } from '@/lib/governing-body';
 import type { ClubSession } from '@/server/auth/session';
 import { boxerCards, type BoxerCard } from '@/server/cross-club';
 import { DEFAULTS, LIMITS, SORTS, gate, score, type Factor, type Sort } from '@/lib/matchmaking';
@@ -16,7 +17,6 @@ export const matchQuerySchema = z.object({
   tol: num(LIMITS.toleranceKg[0], LIMITS.toleranceKg[1]).optional().catch(undefined),
   ageGap: num(LIMITS.ageGap[0], LIMITS.ageGap[1]).optional().catch(undefined),
   boutGap: z.coerce.number().int().min(0).max(200).optional().catch(undefined),
-  body: z.coerce.number().int().min(1).max(32767).optional().catch(undefined),
   region: z.string().trim().min(1).max(80).optional().catch(undefined),
   unavailable: z.literal('1').optional().catch(undefined),
   sort: z.enum(SORTS).optional().catch(undefined),
@@ -64,7 +64,7 @@ type Row = {
 
 export type MatchSearch = {
   own: BoxerCard;
-  filters: { toleranceKg: number; ageGap: number; boutGap: number | null; body: number | null; region: string | null; includeUnavailable: boolean; sort: Sort; minAge: number; maxAge: number };
+  filters: { toleranceKg: number; ageGap: number; boutGap: number | null; region: string | null; includeUnavailable: boolean; sort: Sort; minAge: number; maxAge: number };
   suitable: MatchResult[];
   blocked: MatchResult[];
 };
@@ -81,7 +81,7 @@ export async function searchMatches(session: ClubSession, ownBoxerId: string, q:
     const includeUnavailable = q.unavailable === '1';
     const res = await tx.execute<Row>(sql`
       select * from match_candidates(${own.sex}::boxer_sex, ${own.weightKg - toleranceKg}::numeric, ${own.weightKg + toleranceKg}::numeric,
-        ${minAge}::int, ${maxAge}::int, ${q.body ?? null}::smallint, ${includeUnavailable}, ${q.region ?? null}::text)`);
+        ${minAge}::int, ${maxAge}::int, ${ENGLAND_BOXING_ID}::smallint, ${includeUnavailable}, ${q.region ?? null}::text)`);
     const sort = q.sort ?? 'best';
     const all = res.rows
       .map((r): MatchResult => {
@@ -105,15 +105,11 @@ export async function searchMatches(session: ClubSession, ownBoxerId: string, q:
     all.sort((a, b) => by[sort](a, b) || b.score - a.score || a.id.localeCompare(b.id));
     return {
       own,
-      filters: { toleranceKg, ageGap, boutGap: q.boutGap ?? null, body: q.body ?? null, region: q.region ?? null, includeUnavailable, sort, minAge, maxAge },
+      filters: { toleranceKg, ageGap, boutGap: q.boutGap ?? null, region: q.region ?? null, includeUnavailable, sort, minAge, maxAge },
       suitable: all.filter((r) => !r.blocked.length).slice(0, 100),
       blocked: all.filter((r) => r.blocked.length).slice(0, 50),
     };
   });
-}
-
-export async function listGoverningBodies(session: ClubSession): Promise<{ id: number; name: string }[]> {
-  return withClub(session.clubId, (tx) => tx.select({ id: governingBodies.id, name: governingBodies.name }).from(governingBodies).orderBy(governingBodies.id));
 }
 
 /** Regions clubs can be filtered by: the England Boxing directory's regions. */

@@ -3,19 +3,19 @@ import { randomBytes } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { withAuth } from '@/server/db/client';
-import { clubClaims, clubUsers, clubs, directoryClubs, governingBodies } from '@/server/db/schema';
+import { clubClaims, clubUsers, clubs, directoryClubs } from '@/server/db/schema';
 import { audit } from '@/server/audit';
 import { ApiError } from '@/server/http';
 import { emailSchema, hashPassword, passwordSchema } from '@/server/auth/password';
 import { LIMITS, hit } from '@/server/auth/rate-limit';
 import { createClubSession } from '@/server/auth/session';
 import { isUniqueViolation } from '@/server/cross-club';
+import { ENGLAND_BOXING_ID } from '@/lib/governing-body';
 
 type Meta = { ipHash: string; userAgent: string | null };
 
 export const registerSchema = z.object({
   clubName: z.string().trim().min(2, 'Enter your club’s name').max(160),
-  governingBodyId: z.coerce.number({ error: 'Choose your governing body' }).int().min(1, 'Choose your governing body').max(32767),
   affiliationNumber: z
     .string()
     .trim()
@@ -44,7 +44,7 @@ function slugify(name: string): string {
 const fail = (fields: Record<string, string>) => new ApiError('validation_failed', 'Check the highlighted fields', fields);
 
 /**
- * Self-registration. Creates the club as "submitted" (no verified features until an
+ * Self-registration, for England Boxing clubs only. Creates the club as "submitted" (no verified features until an
  * administrator approves it), its shared login, and an optional pending directory claim.
  */
 export async function registerClub(input: RegisterInput, meta: Meta): Promise<string> {
@@ -58,9 +58,6 @@ export async function registerClub(input: RegisterInput, meta: Meta): Promise<st
   const passwordHash = await hashPassword(input.password);
   try {
     return await withAuth(async (tx) => {
-      const [body] = await tx.select({ id: governingBodies.id }).from(governingBodies).where(eq(governingBodies.id, input.governingBodyId));
-      if (!body) throw fail({ governingBodyId: 'Choose your governing body' });
-
       const [existingUser] = await tx.select({ id: clubUsers.id }).from(clubUsers).where(eq(clubUsers.email, input.email));
       if (existingUser) throw fail({ email: 'This email already has a RingPortal login. Sign in or reset your password.' });
 
@@ -68,7 +65,7 @@ export async function registerClub(input: RegisterInput, meta: Meta): Promise<st
         const [dupe] = await tx
           .select({ id: clubs.id })
           .from(clubs)
-          .where(and(eq(clubs.governingBodyId, input.governingBodyId), sql`lower(${clubs.affiliationNumber}) = lower(${input.affiliationNumber})`));
+          .where(and(eq(clubs.governingBodyId, ENGLAND_BOXING_ID), sql`lower(${clubs.affiliationNumber}) = lower(${input.affiliationNumber})`));
         if (dupe) throw fail({ affiliationNumber: 'A club with this affiliation number is already registered. If that is your club, ask your club’s account holder for the login.' });
       }
 
@@ -83,7 +80,7 @@ export async function registerClub(input: RegisterInput, meta: Meta): Promise<st
           .from(directoryClubs)
           .where(eq(directoryClubs.id, input.directoryClubId));
         if (!d) throw fail({ directoryClubId: 'Choose a club from the list' });
-        if (d.governingBodyId !== input.governingBodyId) throw fail({ directoryClubId: 'This directory record belongs to a different governing body' });
+        if (d.governingBodyId !== ENGLAND_BOXING_ID) throw fail({ directoryClubId: 'Only England Boxing directory records can be claimed' });
         const [live] = await tx
           .select({ id: clubClaims.id })
           .from(clubClaims)
@@ -95,7 +92,7 @@ export async function registerClub(input: RegisterInput, meta: Meta): Promise<st
 
       const [club] = await tx
         .insert(clubs)
-        .values({ name: input.clubName, slug: slugify(input.clubName), governingBodyId: input.governingBodyId, affiliationNumber: input.affiliationNumber, region, status: 'submitted' })
+        .values({ name: input.clubName, slug: slugify(input.clubName), governingBodyId: ENGLAND_BOXING_ID, affiliationNumber: input.affiliationNumber, region, status: 'submitted' })
         .returning({ id: clubs.id });
       const [user] = await tx.insert(clubUsers).values({ clubId: club!.id, email: input.email, passwordHash }).returning({ id: clubUsers.id });
       if (input.directoryClubId) await tx.insert(clubClaims).values({ clubId: club!.id, directoryClubId: input.directoryClubId });
@@ -132,9 +129,6 @@ export async function searchClaimable(q: string, meta: { ipHash: string }): Prom
   });
 }
 
-export async function listGoverningBodiesPublic(): Promise<{ id: number; name: string }[]> {
-  return withAuth((tx) => tx.select({ id: governingBodies.id, name: governingBodies.name }).from(governingBodies).orderBy(governingBodies.id));
-}
 
 export async function listRegionsPublic(): Promise<string[]> {
   return withAuth(async (tx) => {

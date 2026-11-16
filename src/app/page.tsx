@@ -21,7 +21,7 @@ export default async function Home() {
           Club-to-club matchmaking, <span className="text-electric">built for competition secretaries.</span>
         </h1>
         <p className="mt-6 max-w-xl text-base text-muted">
-          RingPortal helps manually verified clubs across England, Scotland, Wales and Ireland find suitable opponents, agree bouts and manage show requirements.
+          RingPortal helps manually verified England Boxing clubs find suitable opponents, agree bouts and manage show requirements.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href={session ? '/dashboard' : '/login'} className={buttonClass('primary')}>

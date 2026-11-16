@@ -8,7 +8,7 @@ import { buttonClass } from '@/components/ui/button';
 import { AVAILABILITY_LABEL, AVAILABILITY_TONE, SEX_LABEL, formatKg, recordLabel } from '@/lib/boxers';
 import { DEFAULTS, LIMITS, SORTS, SORT_LABEL } from '@/lib/matchmaking';
 import { requireApprovedClubPage } from '@/server/auth/guards';
-import { listGoverningBodies, listRegions, parseMatchQuery, searchMatches, type MatchResult } from '@/server/matchmaking/service';
+import { listRegions, parseMatchQuery, searchMatches, type MatchResult } from '@/server/matchmaking/service';
 import { ownBoxersForProposal } from '@/server/proposals/service';
 
 export const metadata: Metadata = { title: 'Matchmaking' };
@@ -57,7 +57,7 @@ function Name({ r }: { r: MatchResult }) {
     <>
       <span className="font-semibold text-ink">{r.displayName}</span> {r.isJunior ? <Badge tone="neutral">Junior</Badge> : null}
       <span className="block text-xs text-muted">
-        <Link href={`/clubs/ringportal/${r.clubSlug}`}>{r.clubName}</Link> · {r.clubRegion ?? 'Region not recorded'} · {r.governingBody}
+        <Link href={`/clubs/ringportal/${r.clubSlug}`}>{r.clubName}</Link> · {r.clubRegion ?? 'Region not recorded'}
       </span>
     </>
   );
@@ -68,7 +68,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
   if (!approved) return <NotApprovedNotice feature="Matchmaking" />;
   const raw = await searchParams;
   const q = parseMatchQuery(raw);
-  const [own, bodies, regions] = await Promise.all([ownBoxersForProposal(session), listGoverningBodies(session), listRegions(session)]);
+  const [own, regions] = await Promise.all([ownBoxersForProposal(session), listRegions(session)]);
   const selectedId = q.boxer && own.some((b) => b.id === q.boxer) ? q.boxer : undefined;
   const search = selectedId ? await searchMatches(session, selectedId, q) : null;
   const view = q.view ?? 'table';
@@ -115,15 +115,6 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="mm-bouts" className="text-sm font-semibold text-ink">Max gap in competitive bouts</label>
               <input id="mm-bouts" name="boutGap" type="number" inputMode="numeric" step={1} min={0} max={200} defaultValue={q.boutGap ?? ''} placeholder="Any" className="rp-input" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="mm-body" className="text-sm font-semibold text-ink">Governing body</label>
-              <select id="mm-body" name="body" defaultValue={q.body ?? ''} className="rp-input">
-                <option value="">Any</option>
-                {bodies.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="mm-region" className="text-sm font-semibold text-ink">Region</label>
@@ -248,7 +239,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
           ) : null}
 
           <p className="mt-4 max-w-3xl text-xs text-muted">
-            Scores are out of 100: weight closeness (40), age closeness (25), competitive experience (25) and skills bouts (10). Under-18s are only matched with under-18s. RingPortal does not decide eligibility and a suggestion is not governing-body approval: both clubs must check every bout against their governing body’s rules. Skills bouts are never counted in a competitive record.
+            Scores are out of 100: weight closeness (40), age closeness (25), competitive experience (25) and skills bouts (10). Under-18s are only matched with under-18s. RingPortal does not decide eligibility and a suggestion is not England Boxing approval: both clubs must check every bout against England Boxing’s rules. Skills bouts are never counted in a competitive record.
           </p>
         </>
       ) : null}

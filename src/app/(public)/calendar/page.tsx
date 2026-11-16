@@ -5,7 +5,7 @@ import { buttonClass } from '@/components/ui/button';
 import { formatShowDate, formatShowTime } from '@/lib/shows';
 import { publicCalendar } from '@/server/shows/service';
 
-export const metadata: Metadata = { title: 'Show calendar', description: 'Upcoming amateur boxing shows listed by verified RingPortal clubs.' };
+export const metadata: Metadata = { title: 'Show calendar', description: 'Upcoming amateur boxing shows listed by verified England Boxing clubs on RingPortal.' };
 export const dynamic = 'force-dynamic';
 
 /** Public, basic calendar: no sign-in, no contact details, no boxer information. */
@@ -35,7 +35,7 @@ export default async function PublicCalendarPage() {
                 </div>
                 <div className="min-w-0 flex-1 basis-56">
                   <p className="font-semibold text-ink">{s.name}</p>
-                  <p className="text-sm text-muted">Hosted by {s.hostClub} · {s.governingBody}</p>
+                  <p className="text-sm text-muted">Hosted by {s.hostClub}</p>
                   <p className="text-sm text-muted">{s.venue}, {s.area}</p>
                 </div>
               </li>

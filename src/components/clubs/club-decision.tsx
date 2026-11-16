@@ -49,7 +49,7 @@ export function ClubDecision({ clubId, actions, hasPendingClaim, claimBlocked, a
           ) : null}
           {action === 'approve' ? (
             <>
-              <p className="text-sm text-muted">Approve only after checking the club’s affiliation with its governing body. Approval opens matchmaking, proposals and messaging to this club.</p>
+              <p className="text-sm text-muted">Approve only after checking the club’s affiliation with England Boxing. Approval opens matchmaking, proposals and messaging to this club.</p>
               <Field label="Affiliation expires on" name="affiliationExpiresOn" type="date" defaultValue={affiliationExpiresOn ?? ''} hint="Optional. Used to flag the club for re-verification." error={fieldErrors.affiliationExpiresOn} onChange={() => clearField('affiliationExpiresOn')} />
               {hasPendingClaim ? (
                 <label className="flex items-start gap-2 text-sm text-ink">

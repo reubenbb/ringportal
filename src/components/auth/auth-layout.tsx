@@ -18,7 +18,7 @@ export function AuthLayout({ eyebrow, title, intro, children, footer, admin = fa
             <br />
             <span className="text-[#087cff]">Club to club.</span>
           </p>
-          <p className="mt-4 max-w-sm text-sm text-white/75">Amateur boxing matchmaking for competition secretaries and coaches across the UK and Ireland.</p>
+          <p className="mt-4 max-w-sm text-sm text-white/75">Amateur boxing matchmaking for competition secretaries and coaches at England Boxing clubs.</p>
         </div>
       </div>
       <div className="flex flex-col px-5 py-8 sm:px-10">

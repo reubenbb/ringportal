@@ -9,7 +9,7 @@ import { Field } from '@/components/ui/field';
 
 type Found = { id: string; name: string; region: string | null };
 
-export function RegisterForm({ bodies, regions }: { bodies: { id: number; name: string }[]; regions: string[] }) {
+export function RegisterForm({ regions }: { regions: string[] }) {
   const router = useRouter();
   const id = useId();
   const { pending, fieldErrors, formError, submit, clearField } = useSubmit<{ ok: boolean }>();
@@ -38,7 +38,6 @@ export function RegisterForm({ bodies, regions }: { bodies: { id: number; name: 
     const f = new FormData(e.currentTarget);
     const data = await submit('POST', '/api/auth/register', {
       clubName: f.get('clubName'),
-      governingBodyId: f.get('governingBodyId'),
       affiliationNumber: f.get('affiliationNumber') ?? '',
       region: f.get('region') ?? '',
       directoryClubId: claim?.id ?? null,
@@ -63,19 +62,9 @@ export function RegisterForm({ bodies, regions }: { bodies: { id: number; name: 
       ) : null}
       <Field label="Club name" name="clubName" required minLength={2} maxLength={160} autoComplete="organization" error={fieldErrors.clubName} onInput={() => clearField('clubName')} />
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={`${id}-body`} className="text-sm font-semibold text-ink">Governing body</label>
-        <select id={`${id}-body`} name="governingBodyId" required defaultValue="" className="rp-input" aria-invalid={fieldErrors.governingBodyId ? true : undefined} aria-describedby={fieldErrors.governingBodyId ? `${id}-body-err` : undefined} onChange={() => clearField('governingBodyId')}>
-          <option value="" disabled>Choose</option>
-          {bodies.map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
-        {fieldErrors.governingBodyId ? <p id={`${id}-body-err`} className="text-sm font-medium text-danger">✕ {fieldErrors.governingBodyId}</p> : null}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={`${id}-region`} className="text-sm font-semibold text-ink">Region</label>
+        <label htmlFor={`${id}-region`} className="text-sm font-semibold text-ink">England Boxing region</label>
         <select id={`${id}-region`} name="region" defaultValue="" className="rp-input" aria-invalid={fieldErrors.region ? true : undefined} onChange={() => clearField('region')}>
-          <option value="">Not sure / not listed</option>
+          <option value="">Not sure</option>
           {regions.map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
@@ -83,7 +72,7 @@ export function RegisterForm({ bodies, regions }: { bodies: { id: number; name: 
         <p className="text-xs text-muted">Other clubs can filter matchmaking by region. If you claim a directory record below, its region is used.</p>
         {fieldErrors.region ? <p className="text-sm font-medium text-danger">✕ {fieldErrors.region}</p> : null}
       </div>
-      <Field label="Affiliation number" name="affiliationNumber" maxLength={40} hint="Optional, but it speeds up verification." error={fieldErrors.affiliationNumber} onInput={() => clearField('affiliationNumber')} />
+      <Field label="England Boxing affiliation number" name="affiliationNumber" maxLength={40} hint="Optional, but it speeds up verification." error={fieldErrors.affiliationNumber} onInput={() => clearField('affiliationNumber')} />
 
       <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-semibold text-ink">Is your club in the England Boxing directory?</legend>

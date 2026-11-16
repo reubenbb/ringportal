@@ -9,7 +9,7 @@ import { THEME_COOKIE, colorSchemeMeta, parseTheme } from '@/lib/preferences';
 
 export const metadata: Metadata = {
   title: { default: 'RingPortal — Amateur Boxing Matchmaking', template: '%s · RingPortal' },
-  description: 'Club-to-club amateur boxing matchmaking for verified clubs in the United Kingdom and Ireland.',
+  description: 'Club-to-club amateur boxing matchmaking for verified England Boxing clubs.',
   robots: { index: false, follow: false },
 };
 

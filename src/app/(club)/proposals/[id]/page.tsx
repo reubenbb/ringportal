@@ -129,7 +129,7 @@ export default async function ProposalPage({ params, searchParams }: { params: P
                         <li key={n}>{n}</li>
                       ))}
                     </ul>
-                    <p className="mt-1">RingPortal does not decide eligibility. Check the bout against your governing body’s rules.</p>
+                    <p className="mt-1">RingPortal does not decide eligibility. Check the bout against England Boxing’s rules.</p>
                   </Alert>
                 </div>
               ) : null}

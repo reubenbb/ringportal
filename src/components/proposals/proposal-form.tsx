@@ -121,7 +121,7 @@ export function ProposalForm({ opponent, opponentClubName, ownBoxers }: { oppone
                 <li key={n}>{n}</li>
               ))}
             </ul>
-            <p className="mt-1">RingPortal does not decide eligibility. Both clubs must check the bout against their governing body’s rules.</p>
+            <p className="mt-1">RingPortal does not decide eligibility. Both clubs must check the bout against England Boxing’s rules.</p>
           </Alert>
         ) : null}
 
