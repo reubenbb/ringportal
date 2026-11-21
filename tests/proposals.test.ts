@@ -84,6 +84,19 @@ describe('creating a bout proposal', () => {
     res = await create(s.a, { ...terms, proposingBoxerId: s.aBoxer, receivingBoxerId: female });
     expect((await json<{ error: { fields: Record<string, string> } }>(res)).error.fields.proposingBoxerId).toMatch(/same sex/);
 
+    // Safeguarding: junior v adult is refused in both directions, even when sex and weight match.
+    const bJunior = await createBoxer(s.b.club.id, { dob: yearsAgo(15), weightKg: 63.5 });
+    res = await create(s.a, { ...terms, proposingBoxerId: s.aBoxer, receivingBoxerId: bJunior });
+    expect(res.status).toBe(422);
+    expect((await json<{ error: { fields: Record<string, string> } }>(res)).error.fields.proposingBoxerId).toMatch(/under-18s/i);
+    const aJunior = await createBoxer(s.a.club.id, { dob: yearsAgo(16), weightKg: 64 });
+    res = await create(s.a, { ...terms, proposingBoxerId: aJunior, receivingBoxerId: s.bBoxer });
+    expect(res.status).toBe(422);
+    expect((await json<{ error: { fields: Record<string, string> } }>(res)).error.fields.proposingBoxerId).toMatch(/under-18s/i);
+    // Junior v junior is still allowed.
+    res = await create(s.a, { ...terms, proposingBoxerId: aJunior, receivingBoxerId: bJunior });
+    expect(res.status).toBe(201);
+
     const archived = await createBoxer(s.b.club.id, { archived: true });
     res = await create(s.a, { ...terms, proposingBoxerId: s.aBoxer, receivingBoxerId: archived });
     expect(res.status).toBe(422);

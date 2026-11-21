@@ -17,7 +17,8 @@ export function ProposalForm({ opponent, opponentClubName, ownBoxers }: { oppone
   const router = useRouter();
   const id = useId();
   const { pending, fieldErrors, formError, submit, clearField } = useSubmit<{ id: string }>();
-  const eligible = ownBoxers.filter((b) => b.sex === opponent.sex);
+  // Same sex category and same junior/adult category as the opponent (the server enforces both).
+  const eligible = ownBoxers.filter((b) => b.sex === opponent.sex && b.isJunior === opponent.isJunior);
   const firstReady = eligible.find((b) => !UNAVAILABLE.has(b.availability));
   const [mine, setMine] = useState<string>(firstReady?.id ?? '');
   const [weight, setWeight] = useState<number | undefined>(opponent.weightKg);
@@ -52,7 +53,9 @@ export function ProposalForm({ opponent, opponentClubName, ownBoxers }: { oppone
         <fieldset className="flex flex-col gap-2" aria-describedby={fieldErrors.proposingBoxerId ? `${id}-mine-err` : undefined}>
           <legend className="text-sm font-semibold text-ink">Your boxer</legend>
           {eligible.length === 0 ? (
-            <p className="text-sm text-muted">You have no active {opponent.sex} boxers. Add one under My boxers first.</p>
+            <p className="text-sm text-muted">
+              You have no active {opponent.sex} {opponent.isJunior ? 'under-18' : 'adult'} boxers to match against {opponent.displayName}. Add one under My boxers first.
+            </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {eligible.map((b) => {
