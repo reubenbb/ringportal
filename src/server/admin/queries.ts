@@ -85,3 +85,53 @@ export async function platformOverview(): Promise<Overview> {
     };
   });
 }
+
+export type WeekActivity = {
+  /** Monday of the week (Europe/London), YYYY-MM-DD. */
+  weekStart: string;
+  registrations: number;
+  approvals: number;
+  proposals: number;
+  confirmedBouts: number;
+  messages: number;
+  transfers: number;
+};
+
+/**
+ * Activity per week for the last `weeks` weeks, newest first. Demo clubs are excluded so the
+ * numbers reflect real use. Counts only: no club names or content.
+ */
+export async function weeklyActivity(weeks = 8): Promise<WeekActivity[]> {
+  const n = Math.min(Math.max(Math.trunc(weeks), 1), 26);
+  return withAdmin(async (tx) => {
+    const res = await tx.execute<{ week: string; registrations: number; approvals: number; proposals: number; confirmed: number; messages: number; transfers: number }>(sql`
+      with weeks as (
+        select (date_trunc('week', (now() at time zone 'Europe/London')) - make_interval(weeks => g))::date as week
+        from generate_series(0, ${n - 1}) g
+      ),
+      real_clubs as (select id from clubs where not is_demo)
+      select w.week::text as week,
+        (select count(*) from clubs c where not c.is_demo and (date_trunc('week', c.created_at at time zone 'Europe/London'))::date = w.week)::int as registrations,
+        (select count(*) from audit_log a where a.action = 'club.approve' and a.club_id in (select id from real_clubs)
+           and (date_trunc('week', a.occurred_at at time zone 'Europe/London'))::date = w.week)::int as approvals,
+        (select count(*) from bout_proposals p where p.proposing_club_id in (select id from real_clubs)
+           and (date_trunc('week', p.created_at at time zone 'Europe/London'))::date = w.week)::int as proposals,
+        (select count(*) from bout_proposal_events e where e.event = 'bout_confirmed' and e.club_id in (select id from real_clubs)
+           and (date_trunc('week', e.occurred_at at time zone 'Europe/London'))::date = w.week)::int as confirmed,
+        (select count(*) from messages m where m.sender_club_id in (select id from real_clubs)
+           and (date_trunc('week', m.created_at at time zone 'Europe/London'))::date = w.week)::int as messages,
+        (select count(*) from boxer_transfers t where t.status = 'approved' and t.to_club_id in (select id from real_clubs)
+           and (date_trunc('week', t.decided_at at time zone 'Europe/London'))::date = w.week)::int as transfers
+      from weeks w
+      order by w.week desc`);
+    return res.rows.map((r) => ({
+      weekStart: r.week,
+      registrations: Number(r.registrations),
+      approvals: Number(r.approvals),
+      proposals: Number(r.proposals),
+      confirmedBouts: Number(r.confirmed),
+      messages: Number(r.messages),
+      transfers: Number(r.transfers),
+    }));
+  });
+}
