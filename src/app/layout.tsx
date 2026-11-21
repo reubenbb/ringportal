@@ -6,11 +6,12 @@ import '@fontsource/barlow-condensed/700.css';
 import '@fontsource/barlow-condensed/700-italic.css';
 import './globals.css';
 import { THEME_COOKIE, colorSchemeMeta, parseTheme } from '@/lib/preferences';
+import { pageRobots } from '@/lib/indexing';
 
 export const metadata: Metadata = {
   title: { default: 'RingPortal — Amateur Boxing Matchmaking', template: '%s · RingPortal' },
   description: 'Club-to-club amateur boxing matchmaking for verified England Boxing clubs.',
-  robots: { index: false, follow: false },
+  robots: pageRobots(),
 };
 
 export const viewport: Viewport = {

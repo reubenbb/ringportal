@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { PRIVATE_PATH_PREFIXES } from './src/lib/indexing';
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -18,6 +19,11 @@ const nextConfig: NextConfig = {
     return [
       { source: '/:path*', headers: securityHeaders },
       { source: '/api/:path*', headers: [{ key: 'Cache-Control', value: 'no-store' }] },
+      // Private pages are never indexed, even when SITE_INDEXING is enabled for public pages.
+      ...PRIVATE_PATH_PREFIXES.map((prefix) => ({
+        source: `${prefix}/:path*`,
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      })),
     ];
   },
 };
