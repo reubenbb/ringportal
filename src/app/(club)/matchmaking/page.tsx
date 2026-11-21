@@ -5,7 +5,7 @@ import { MessageButton } from '@/components/messaging/conversation-buttons';
 import { Alert } from '@/components/ui/alert';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { buttonClass } from '@/components/ui/button';
-import { AVAILABILITY_LABEL, AVAILABILITY_TONE, SEX_LABEL, formatKg, recordLabel } from '@/lib/boxers';
+import { AVAILABILITY_LABEL, AVAILABILITY_TONE, SEX_LABEL, formatKg, recordLabel, weightAgeDays, weightIsStale } from '@/lib/boxers';
 import { DEFAULTS, LIMITS, SORTS, SORT_LABEL } from '@/lib/matchmaking';
 import { requireApprovedClubPage } from '@/server/auth/guards';
 import { listRegions, parseMatchQuery, searchMatches, type MatchResult } from '@/server/matchmaking/service';
@@ -148,6 +148,13 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
 
       {search ? (
         <>
+          {weightIsStale(search.ownWeightRecordedAt) ? (
+            <div className="mt-6">
+              <Alert tone="warning" title={`${search.own.displayName}’s weight was last updated ${weightAgeDays(search.ownWeightRecordedAt)} days ago`}>
+                Results are based on {formatKg(search.own.weightKg)}. <Link href={`/boxers/${search.own.id}`}>Update the weight</Link> if it has changed, so other clubs get an accurate match.
+              </Alert>
+            </div>
+          ) : null}
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted" role="status">
               <strong className="text-ink">{search.suitable.length}</strong> suitable {search.suitable.length === 1 ? 'opponent' : 'opponents'} for {search.own.displayName}: {SEX_LABEL[search.own.sex].toLowerCase()}, {formatKg(search.own.weightKg - search.filters.toleranceKg)}–{formatKg(search.own.weightKg + search.filters.toleranceKg)}, aged {search.filters.minAge}–{search.filters.maxAge}{search.filters.region ? `, ${search.filters.region} region` : ''}.

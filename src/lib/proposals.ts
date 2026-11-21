@@ -42,6 +42,18 @@ export const BOUT_TYPES = ['competitive', 'skills'] as const;
 export type BoutType = (typeof BOUT_TYPES)[number];
 export const BOUT_TYPE_LABEL: Record<BoutType, string> = { competitive: 'Competitive', skills: 'Skills bout' };
 
+/**
+ * What a club confirms it has checked before giving final confirmation. RingPortal wording, based on
+ * common club practice; it does not replace England Boxing rules. Bump the version if the wording changes.
+ */
+export const CONFIRM_CHECKLIST_VERSION = '2026-11-21';
+export const CONFIRM_CHECKLIST = [
+  'Our boxer is medically fit and eligible to box under England Boxing rules and our club’s own checks.',
+  'The weight, age and experience we have given for our boxer are accurate and up to date.',
+  'This bout will go through the usual England Boxing approval for the show. RingPortal does not approve bouts.',
+  'If either boxer is under 18, safeguarding arrangements are in place: travel, supervision and a parent or guardian informed.',
+] as const;
+
 export type ProposalAction = 'accept' | 'revise' | 'confirm' | 'decline' | 'withdraw';
 
 export const ACTION_LABEL: Record<ProposalAction, string> = {

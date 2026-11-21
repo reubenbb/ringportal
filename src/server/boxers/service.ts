@@ -40,6 +40,7 @@ export type OwnBoxer = {
   sex: 'male' | 'female';
   dateOfBirth: string;
   weightKg: number;
+  weightRecordedAt: string;
   competitiveWins: number;
   competitiveLosses: number;
   competitiveDraws: number;
@@ -59,6 +60,7 @@ const ownColumns = {
   sex: boxers.sex,
   dateOfBirth: boxerPrivate.dateOfBirth,
   weightKg: boxers.weightKg,
+  weightRecordedAt: boxers.weightRecordedAt,
   competitiveWins: boxers.competitiveWins,
   competitiveLosses: boxers.competitiveLosses,
   competitiveDraws: boxers.competitiveDraws,
@@ -76,6 +78,7 @@ const toOwn = (r: OwnRow): OwnBoxer => ({
   ...(r as unknown as OwnBoxer),
   weightKg: Number(r.weightKg),
   availabilityChangedAt: (r.availabilityChangedAt as Date).toISOString(),
+  weightRecordedAt: (r.weightRecordedAt as Date).toISOString(),
   archivedAt: r.archivedAt ? (r.archivedAt as Date).toISOString() : null,
   guardianConsentAt: r.guardianConsentAt ? (r.guardianConsentAt as Date).toISOString() : null,
 });

@@ -21,6 +21,7 @@ import { MESSAGE_MAX } from '@/lib/messaging';
 import { assertNotBlocked } from '@/server/clubs/blocks';
 import {
   BOUT_TYPES,
+  CONFIRM_CHECKLIST_VERSION,
   OPEN_STATUSES,
   availableActions,
   changedTerms,
@@ -86,7 +87,7 @@ const expectedVersion = z.coerce.number().int().min(1);
 
 export const proposalActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('accept'), expectedVersion }),
-  z.object({ action: z.literal('confirm'), expectedVersion }),
+  z.object({ action: z.literal('confirm'), expectedVersion, checks: z.literal(true, { error: 'Tick the box to confirm your club has made these checks' }) }),
   z.object({ action: z.literal('decline'), expectedVersion, message: messageField }),
   z.object({ action: z.literal('withdraw'), expectedVersion: expectedVersion.optional(), message: messageField }),
   z.object({ action: z.literal('revise'), expectedVersion, terms: termsSchema, message: messageField }),
@@ -335,7 +336,7 @@ export async function actOnProposal(session: ClubSession, id: string, input: Pro
       action: `proposal.${input.action}`,
       targetType: 'bout_proposal',
       targetId: id,
-      metadata: { version, from: p.status, to: next },
+      metadata: { version, from: p.status, to: next, ...(input.action === 'confirm' ? { checklist: CONFIRM_CHECKLIST_VERSION } : {}) },
       ipHash: meta.ipHash,
     });
     return { status: next, version };

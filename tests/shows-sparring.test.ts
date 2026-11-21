@@ -242,9 +242,9 @@ describe('boxer availability follows a confirmed bout', () => {
     const act = (c: Club, body: Record<string, unknown>) => post(proposalActionApi, c, `/api/proposals/${id}`, body, id);
     const availability = async () => (await owner.query(`select availability from boxers where id = any($1) order by id`, [[aBoxer, bBoxer]])).rows.map((r) => r.availability);
     await act(b, { action: 'accept', expectedVersion: 1 });
-    await act(a, { action: 'confirm', expectedVersion: 1 });
+    await act(a, { action: 'confirm', expectedVersion: 1, checks: true });
     expect(await availability()).toEqual(['ready', 'ready']);
-    await act(b, { action: 'confirm', expectedVersion: 1 });
+    await act(b, { action: 'confirm', expectedVersion: 1, checks: true });
     expect(await availability()).toEqual(['confirmed', 'confirmed']);
     await act(a, { action: 'withdraw' });
     expect(await availability()).toEqual(['ready', 'ready']);

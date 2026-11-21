@@ -1,8 +1,8 @@
 import 'server-only';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { withClub } from '@/server/db/client';
-import { directoryClubs } from '@/server/db/schema';
+import { boxers, directoryClubs } from '@/server/db/schema';
 import { ENGLAND_BOXING_ID } from '@/lib/governing-body';
 import type { ClubSession } from '@/server/auth/session';
 import { boxerCards, type BoxerCard } from '@/server/cross-club';
@@ -64,6 +64,8 @@ type Row = {
 
 export type MatchSearch = {
   own: BoxerCard;
+  /** When the club last entered its own boxer's weight (own club only). */
+  ownWeightRecordedAt: string;
   filters: { toleranceKg: number; ageGap: number; boutGap: number | null; region: string | null; includeUnavailable: boolean; sort: Sort; minAge: number; maxAge: number };
   suitable: MatchResult[];
   blocked: MatchResult[];
@@ -103,8 +105,10 @@ export async function searchMatches(session: ClubSession, ownBoxerId: string, q:
     };
     // Stable, predictable order: chosen sort, then score, then id.
     all.sort((a, b) => by[sort](a, b) || b.score - a.score || a.id.localeCompare(b.id));
+    const [recorded] = await tx.select({ at: boxers.weightRecordedAt }).from(boxers).where(eq(boxers.id, own.id));
     return {
       own,
+      ownWeightRecordedAt: recorded!.at.toISOString(),
       filters: { toleranceKg, ageGap, boutGap: q.boutGap ?? null, region: q.region ?? null, includeUnavailable, sort, minAge, maxAge },
       suitable: all.filter((r) => !r.blocked.length).slice(0, 100),
       blocked: all.filter((r) => r.blocked.length).slice(0, 50),

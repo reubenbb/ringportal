@@ -318,6 +318,8 @@ export const boxers = pgTable(
     lastName: text('last_name').notNull(),
     sex: boxerSex('sex').notNull(),
     weightKg: numeric('weight_kg', { precision: 5, scale: 2, mode: 'number' }).notNull(),
+    /** Set by trigger whenever weight_kg changes (migration 0026). */
+    weightRecordedAt: ts('weight_recorded_at').notNull().defaultNow(),
     competitiveWins: smallint('competitive_wins').notNull().default(0),
     competitiveLosses: smallint('competitive_losses').notNull().default(0),
     competitiveDraws: smallint('competitive_draws').notNull().default(0),

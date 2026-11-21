@@ -10,6 +10,7 @@ import { closeDb } from '@/server/db/client';
 import type { ClubSession } from '@/server/auth/session';
 import { PASSWORD, cookieFrom, createClubWithUser, ctx, idCtx, json, owner, req } from './helpers';
 import { TEST_APP_URL } from './test-config';
+import { weightAgeDays, weightIsStale } from '@/lib/boxers';
 
 afterAll(async () => {
   await closeDb();
@@ -193,5 +194,32 @@ describe('approved club listing', () => {
     expect(JSON.stringify(seen)).not.toContain('AFF-SECRET-1');
     expect(seen.some((c) => c.id === pending.club.id)).toBe(false);
     expect(await listApprovedClubsForClub(pending.session)).toEqual([]);
+  });
+});
+
+describe('weight recency', () => {
+  it('records when the weight was entered; only a weight change moves it, and it cannot be set directly', async () => {
+    const { club } = await createClubWithUser({ status: 'approved' });
+    const { rows: [b] } = await owner.query(
+      `insert into boxers (club_id, first_name, last_name, sex, weight_kg) values ($1, 'Wren', 'Scale', 'male', 64) returning id, weight_recorded_at`,
+      [club.id],
+    );
+    const at = async () => (await owner.query(`select weight_recorded_at from boxers where id = $1`, [b.id])).rows[0].weight_recorded_at as Date;
+    expect(b.weight_recorded_at).toBeInstanceOf(Date);
+    await owner.query(`update boxers set weight_recorded_at = now() - interval '90 days' where id = $1`, [b.id]);
+    expect((await at()).getTime()).toBe(b.weight_recorded_at.getTime());
+    await owner.query(`update boxers set first_name = 'Wren2', weight_kg = 64 where id = $1`, [b.id]);
+    expect((await at()).getTime()).toBe(b.weight_recorded_at.getTime());
+    await new Promise((r) => setTimeout(r, 20));
+    await owner.query(`update boxers set weight_kg = 65.5 where id = $1`, [b.id]);
+    expect((await at()).getTime()).toBeGreaterThan(b.weight_recorded_at.getTime());
+  });
+
+  it('flags a weight older than the RingPortal default', () => {
+    const now = new Date('2026-11-21T12:00:00Z');
+    expect(weightAgeDays('2026-10-24T12:00:00Z', now)).toBe(28);
+    expect(weightIsStale('2026-10-24T12:00:00Z', now)).toBe(false);
+    expect(weightIsStale('2026-10-23T11:00:00Z', now)).toBe(true);
+    expect(weightAgeDays('2026-11-22T12:00:00Z', now)).toBe(0);
   });
 });

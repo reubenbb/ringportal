@@ -5,6 +5,7 @@ import { POST as createApi } from '@/app/api/proposals/route';
 import { POST as actionApi } from '@/app/api/proposals/[id]/route';
 import { getProposal, listProposals } from '@/server/proposals/service';
 import { notificationSummary } from '@/server/messaging/service';
+import { CONFIRM_CHECKLIST_VERSION } from '@/lib/proposals';
 import { closeDb } from '@/server/db/client';
 import type { ClubSession } from '@/server/auth/session';
 import { PASSWORD, cookieFrom, createBoxer, createClubWithUser, ctx, daysFromNow, idCtx, json, owner, req, yearsAgo } from './helpers';
@@ -151,10 +152,19 @@ describe('negotiation, versions and dual final confirmation', () => {
     expect(view!.waitingOn.sort()).toEqual([s.a.club.id, s.b.club.id].sort());
     expect(view!.actions).toEqual(['confirm', 'revise', 'withdraw']);
 
+    // Final confirmation needs the club's checklist tick; without it nothing is recorded.
+    const unticked = await act(s.a, id, { action: 'confirm', expectedVersion: 1 });
+    expect(unticked.status).toBe(422);
+    expect((await json<{ error: { fields: Record<string, string> } }>(unticked)).error.fields).toHaveProperty('checks');
+    expect((await act(s.a, id, { action: 'confirm', expectedVersion: 1, checks: false })).status).toBe(422);
+    expect((await getProposal(s.a.session, id))!.confirmations).toEqual([]);
+
     // Club A gives final confirmation of v1; still awaiting B.
-    expect(await json(await act(s.a, id, { action: 'confirm', expectedVersion: 1 }))).toEqual({ status: 'awaiting_confirmation', version: 1 });
+    expect(await json(await act(s.a, id, { action: 'confirm', expectedVersion: 1, checks: true }))).toEqual({ status: 'awaiting_confirmation', version: 1 });
     view = await getProposal(s.b.session, id);
     expect(view!.confirmations.map((c) => c.clubId)).toEqual([s.a.club.id]);
+    const audited = await owner.query(`select metadata from audit_log where action = 'proposal.confirm' and target_id = $1`, [id]);
+    expect(audited.rows[0].metadata).toMatchObject({ version: 1, checklist: CONFIRM_CHECKLIST_VERSION });
     expect(view!.waitingOn).toEqual([s.b.club.id]);
 
     // Club B changes the weight instead: new version, A's confirmation no longer counts.
@@ -175,9 +185,9 @@ describe('negotiation, versions and dual final confirmation', () => {
 
     // A accepts v2, then both clubs confirm v2: only now is it a confirmed bout.
     expect((await json(await act(s.a, id, { action: 'accept', expectedVersion: 2 }))).status).toBe('accepted_in_principle');
-    expect((await json(await act(s.b, id, { action: 'confirm', expectedVersion: 2 }))).status).toBe('awaiting_confirmation');
-    expect((await act(s.b, id, { action: 'confirm', expectedVersion: 2 })).status).toBe(409); // already confirmed
-    expect((await json(await act(s.a, id, { action: 'confirm', expectedVersion: 2 }))).status).toBe('confirmed');
+    expect((await json(await act(s.b, id, { action: 'confirm', expectedVersion: 2, checks: true }))).status).toBe('awaiting_confirmation');
+    expect((await act(s.b, id, { action: 'confirm', expectedVersion: 2, checks: true })).status).toBe(409); // already confirmed
+    expect((await json(await act(s.a, id, { action: 'confirm', expectedVersion: 2, checks: true }))).status).toBe('confirmed');
 
     view = await getProposal(s.b.session, id);
     expect(view).toMatchObject({ status: 'confirmed', waitingOn: [], actions: ['revise', 'withdraw'] });
@@ -198,7 +208,7 @@ describe('negotiation, versions and dual final confirmation', () => {
 
   it('serialises simultaneous final confirmations so the bout is confirmed exactly once', async () => {
     await act(s.b, id, { action: 'accept', expectedVersion: 1 });
-    const [ra, rb] = await Promise.all([act(s.a, id, { action: 'confirm', expectedVersion: 1 }), act(s.b, id, { action: 'confirm', expectedVersion: 1 })]);
+    const [ra, rb] = await Promise.all([act(s.a, id, { action: 'confirm', expectedVersion: 1, checks: true }), act(s.b, id, { action: 'confirm', expectedVersion: 1, checks: true })]);
     const statuses = [(await json<{ status: string }>(ra)).status, (await json<{ status: string }>(rb)).status].sort();
     expect(statuses).toEqual(['awaiting_confirmation', 'confirmed']);
     const { rows } = await owner.query(`select count(*)::int as n from bout_proposal_events where proposal_id = $1 and event = 'bout_confirmed'`, [id]);
@@ -207,7 +217,7 @@ describe('negotiation, versions and dual final confirmation', () => {
 
   it('rejects a revision that changes nothing, and actions not open to that club', async () => {
     expect((await act(s.b, id, { action: 'revise', expectedVersion: 1, terms })).status).toBe(422);
-    expect((await act(s.b, id, { action: 'confirm', expectedVersion: 1 })).status).toBe(409); // not accepted yet
+    expect((await act(s.b, id, { action: 'confirm', expectedVersion: 1, checks: true })).status).toBe(409); // not accepted yet
     expect((await act(s.b, id, { action: 'withdraw' })).status).toBe(409); // receiver declines rather than withdraws
     expect((await act(s.a, id, { action: 'decline', expectedVersion: 1 })).status).toBe(409); // proposer withdraws rather than declines
     expect((await act(s.a, id, { action: 'delete' })).status).toBe(422);
@@ -216,7 +226,7 @@ describe('negotiation, versions and dual final confirmation', () => {
   it('decline closes the proposal; a new proposal between the same boxers is then allowed', async () => {
     expect((await json(await act(s.b, id, { action: 'decline', expectedVersion: 1, message: 'Not this time, thanks.' }))).status).toBe('declined');
     for (const action of ['accept', 'confirm', 'decline']) {
-      expect((await act(s.b, id, { action, expectedVersion: 1 })).status).toBe(409);
+      expect((await act(s.b, id, { action, expectedVersion: 1, checks: true })).status).toBe(409);
     }
     expect((await act(s.a, id, { action: 'withdraw' })).status).toBe(409);
     await propose(s);

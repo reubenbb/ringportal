@@ -37,3 +37,14 @@ export function ageOn(dateOfBirth: string, today = new Date()): number {
   if (md < m * 100 + d) age--;
   return age;
 }
+
+/** RingPortal default, not an England Boxing rule: a weight older than this is flagged as possibly out of date. */
+export const WEIGHT_STALE_DAYS = 28;
+
+export function weightAgeDays(recordedAt: string, now = new Date()): number {
+  return Math.max(0, Math.floor((now.getTime() - new Date(recordedAt).getTime()) / 86_400_000));
+}
+
+export function weightIsStale(recordedAt: string, now = new Date()): boolean {
+  return weightAgeDays(recordedAt, now) > WEIGHT_STALE_DAYS;
+}

@@ -8,7 +8,7 @@ import { BoxerForm } from '@/components/boxers/boxer-form';
 import { NotApprovedNotice } from '@/components/boxers/not-approved';
 import { Alert } from '@/components/ui/alert';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
-import { AVAILABILITY_LABEL, AVAILABILITY_TONE, ageOn, recordLabel } from '@/lib/boxers';
+import { AVAILABILITY_LABEL, AVAILABILITY_TONE, ageOn, formatKg, recordLabel, weightAgeDays, weightIsStale } from '@/lib/boxers';
 import { formatDateTime } from '@/lib/club-status';
 import { requireApprovedClubPage } from '@/server/auth/guards';
 import { getOwnBoxer } from '@/server/boxers/service';
@@ -38,6 +38,11 @@ export default async function BoxerPage({ params, searchParams }: { params: Prom
       <div className="flex flex-col gap-6">
         {flags.created ? <Alert tone="success" live>Boxer added. Other approved clubs can now see this boxer{age < 18 ? ' (as “' + b.firstName + ' ' + b.lastName.charAt(0) + '.”, because they are under 18)' : ''}.</Alert> : null}
         {flags.saved ? <Alert tone="success" live>Changes saved.</Alert> : null}
+        {!b.archivedAt && weightIsStale(b.weightRecordedAt) ? (
+          <Alert tone="warning" title={`Weight last updated ${weightAgeDays(b.weightRecordedAt)} days ago`}>
+            Other clubs match against {formatKg(b.weightKg)}. If it has changed, update it below so matches stay accurate.
+          </Alert>
+        ) : null}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Card title="Details">
             {b.archivedAt ? (

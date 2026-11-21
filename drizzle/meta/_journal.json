@@ -183,6 +183,13 @@
       "when": 1795258250505,
       "tag": "0025_club_logos_security",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795261850505,
+      "tag": "0026_boxer_weight_recorded",
+      "breakpoints": true
     }
   ]
 }

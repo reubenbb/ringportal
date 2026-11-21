@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { api, useSubmit } from '@/lib/api-client';
 import { formatKg } from '@/lib/boxers';
 import { MESSAGE_MAX } from '@/lib/messaging';
-import { ACTION_LABEL, BOUT_TYPE_LABEL, formatProposalDate, type ProposalAction, type ProposalStatus, type Terms } from '@/lib/proposals';
+import { ACTION_LABEL, BOUT_TYPE_LABEL, CONFIRM_CHECKLIST, formatProposalDate, type ProposalAction, type ProposalStatus, type Terms } from '@/lib/proposals';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { refreshNotificationCounts } from '@/components/shell/notification-counts';
@@ -46,6 +46,7 @@ function ActionDialog({
   confirmLabel,
   tone,
   withMessage,
+  checklist,
   onConfirm,
 }: {
   open: boolean;
@@ -55,11 +56,13 @@ function ActionDialog({
   confirmLabel: string;
   tone: 'primary' | 'danger';
   withMessage: boolean;
+  checklist?: readonly string[];
   onConfirm: (message: string) => Promise<string | null>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const msgId = useId();
+  const checkId = useId();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +100,20 @@ function ActionDialog({
             <textarea id={msgId} name="message" rows={3} maxLength={MESSAGE_MAX} className="rp-input" />
           </div>
         ) : null}
+        {checklist ? (
+          <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3">
+            <legend className="px-1 text-sm font-semibold text-ink">Before you confirm</legend>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-ink">
+              {checklist.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+            <label htmlFor={checkId} className="mt-1 flex items-start gap-2 text-sm font-semibold text-ink">
+              <input id={checkId} name="checks" type="checkbox" required className="mt-0.5 size-4" />
+              <span>Our club has made these checks</span>
+            </label>
+          </fieldset>
+        ) : null}
         {error ? (
           <Alert tone="danger" live>
             {error}
@@ -133,7 +150,7 @@ export function ProposalActions({ proposalId, version, status, actions, current,
   };
 
   async function run(action: DialogAction, message: string): Promise<string | null> {
-    const res = await api('POST', `/api/proposals/${proposalId}`, { action, expectedVersion: version, ...(action === 'decline' || action === 'withdraw' ? { message } : {}) });
+    const res = await api('POST', `/api/proposals/${proposalId}`, { action, expectedVersion: version, ...(action === 'decline' || action === 'withdraw' ? { message } : {}), ...(action === 'confirm' ? { checks: true } : {}) });
     if (res.ok) {
       done();
       return null;
@@ -180,6 +197,7 @@ export function ProposalActions({ proposalId, version, status, actions, current,
           </div>
           <p className="mt-3">The bout is confirmed only when {otherClubName} also confirms this exact version.</p>
           <p className="mt-2 text-muted">If either club later changes a term, both confirmations are reset and the new version must be confirmed again.</p>
+          <p className="mt-2 text-muted">Coaches make the final decision on whether a bout is suitable. If it looks borderline, say so or decline.</p>
         </>
       ),
       label: 'Give final confirmation',
@@ -279,6 +297,7 @@ export function ProposalActions({ proposalId, version, status, actions, current,
             confirmLabel={dialogs[a].label}
             tone={dialogs[a].tone}
             withMessage={dialogs[a].message}
+            checklist={a === 'confirm' ? CONFIRM_CHECKLIST : undefined}
             onConfirm={(m) => run(a, m)}
           >
             {dialogs[a].body}
