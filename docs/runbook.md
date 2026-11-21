@@ -13,8 +13,11 @@ Branches: `production` (root/default, `br-falling-scene-zaq14bkj`), `staging` (`
    ```
 2. Take a manual snapshot of `production` (snapshots are only allowed on the root branch).
    Name it `prod-pre-<migrations>-<yyyymmdd>` and give it an expiry of 90 days or more.
+   The current plan allows **one** manual snapshot. Once real data exists, delete the older one first
+   (with the owner's OK), or upgrade the plan. Until then, record the exact time before migrating so
+   point-in-time restore (6 h history) can be used.
 3. Apply the migration to `staging` first, deploy, and verify. Then apply it to production.
-4. Afterwards, confirm production and staging have identical schemas with `docs/schema-fingerprint.sql`.
+4. Afterwards, confirm production, staging and a locally migrated database have identical schemas with `docs/schema-fingerprint.sql` (owner role names are excluded, so all three compare directly).
    Run it on both branches; the `fp` values must match.
 
 ## 2. Restore options
