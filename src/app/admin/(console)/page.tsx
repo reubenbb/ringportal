@@ -48,7 +48,7 @@ export default async function AdminOverviewPage() {
         </Card>
       </div>
       <Card title="Activity by week" description="Last 8 weeks, Monday to Sunday (UK time). Demo clubs are excluded." className="mt-6">
-        <div className="-mx-5 overflow-x-auto">
+        <div className="relative -mx-5 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <caption className="sr-only">Platform activity per week, newest first</caption>
             <thead>

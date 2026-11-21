@@ -24,7 +24,7 @@ export function RosterTable({
   if (boxers.length === 0) return <p className="py-6 text-center text-sm text-muted">{emptyText}</p>;
   return (
     <>
-      <div className="-mx-5 overflow-x-auto">
+      <div className="relative -mx-5 overflow-x-auto">
         <table className="w-full min-w-[1020px] text-sm">
           <caption className="sr-only">Boxers</caption>
           <thead>

@@ -125,7 +125,7 @@ export default async function AdminClubPage({ params }: { params: Promise<{ id: 
           {c.proposals.length === 0 ? (
             <p className="text-sm text-muted">No proposals involve this club.</p>
           ) : (
-            <div className="-mx-5 overflow-x-auto">
+            <div className="relative -mx-5 overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm">
                 <caption className="sr-only">Bout proposals involving this club</caption>
                 <thead>

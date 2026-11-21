@@ -55,7 +55,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         {page.rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">No audit events match this filter.</p>
         ) : (
-          <div className="-mx-5 overflow-x-auto">
+          <div className="relative -mx-5 overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <caption className="sr-only">Audit events</caption>
               <thead>

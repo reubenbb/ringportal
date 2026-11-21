@@ -43,7 +43,7 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">No clubs in this view.</p>
         ) : (
-          <div className="-mx-5 -my-4 overflow-x-auto">
+          <div className="relative -mx-5 -my-4 overflow-x-auto">
             <table className="w-full min-w-[820px] text-sm">
               <caption className="sr-only">Clubs</caption>
               <thead>

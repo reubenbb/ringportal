@@ -43,7 +43,7 @@ export default async function MyBoxersPage({ searchParams }: { searchParams: Pro
             ) : null}
           </div>
         ) : (
-          <div className="-mx-5 overflow-x-auto">
+          <div className="relative -mx-5 overflow-x-auto">
             <table className="w-full min-w-[820px] text-sm">
               <caption className="sr-only">{archived ? 'Archived boxers' : 'Active boxers'}</caption>
               <thead>

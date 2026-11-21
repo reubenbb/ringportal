@@ -11,14 +11,14 @@ export default async function Home() {
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <BrandLockup className="h-5 w-auto text-ink" />
-          <Link href={session ? '/dashboard' : '/login'} className={buttonClass('secondary', 'min-h-10 py-2')}>
+          <Link href={session ? '/dashboard' : '/login'} className={buttonClass('secondary', 'min-h-10 shrink-0 whitespace-nowrap py-2')}>
             {session ? 'Open dashboard' : 'Club sign in'}
           </Link>
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-16">
         <p className="rp-eyebrow">Amateur boxing matchmaking</p>
-        <h1 className="rp-display mt-3 max-w-3xl text-6xl text-ink sm:text-7xl">
+        <h1 className="rp-display mt-3 max-w-3xl text-5xl text-ink min-[400px]:text-6xl sm:text-7xl">
           Club-to-club matchmaking, <span className="text-electric">built for competition secretaries.</span>
         </h1>
         <p className="mt-6 max-w-xl text-base text-muted">

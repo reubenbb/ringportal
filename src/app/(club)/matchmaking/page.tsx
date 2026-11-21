@@ -196,7 +196,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
             </ul>
           ) : (
             <Card className="mt-3">
-              <div className="-mx-5 -my-4 overflow-x-auto">
+              <div className="relative -mx-5 -my-4 overflow-x-auto">
                 <table className="w-full min-w-[900px] text-sm">
                   <caption className="sr-only">Suitable opponents, {SORT_LABEL[search.filters.sort].toLowerCase()} first</caption>
                   <thead>

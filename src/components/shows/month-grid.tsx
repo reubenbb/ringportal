@@ -52,7 +52,7 @@ export function MonthGrid({ month, shows, monthHref }: { month: string; shows: G
         <h2 className="text-base font-semibold text-ink">{title}</h2>
         <Link href={monthHref(shiftMonth(month, 1))} className="text-sm font-semibold"><span className="sr-only">Next month</span> →</Link>
       </div>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[640px] table-fixed border-collapse text-sm">
           <caption className="sr-only">Shows in {title}</caption>
           <thead>

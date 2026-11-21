@@ -95,7 +95,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         </p>
 
         {list.rows.length > 0 ? (
-          <div className="-mx-5 overflow-x-auto">
+          <div className="relative -mx-5 overflow-x-auto">
             <table className="w-full min-w-[860px] text-sm">
               <caption className="sr-only">Directory clubs</caption>
               <thead>
