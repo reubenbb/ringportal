@@ -116,12 +116,12 @@ Logs record only the subject, HTTP status and Resend error name: never the recip
   only on request (no Git auto-deploy). Vercel login protection is on for all URLs until launch.
 - Its production env vars are `MFA_ENCRYPTION_KEY`, `LOG_HASH_KEY` and `CRON_SECRET` (new values, not
   the staging ones), plus `MAIL_TRANSPORT=disabled`. `DATABASE_URL` is set by the owner (see below).
-- **Owner step (one time):** in the Neon console, open the SQL editor on the `production` branch,
-  database `ringportal`, and run
-  `ALTER ROLE ringportal_app_login LOGIN PASSWORD '<new random password of 32+ characters>';`
-  Then, in Vercel → ringportal-production → Settings → Environment Variables, add `DATABASE_URL`
-  (Sensitive, Production only):
-  `postgresql://ringportal_app_login:<that password>@ep-orange-cake-zakovkba-pooler.c-2.eu-west-2.aws.neon.tech/ringportal?sslmode=require&channel_binding=require`
+- `DATABASE_URL` uses the least-privilege role `ringportal_app_login` (no BYPASSRLS). It was first set
+  on 2026-11-21 through the build chat, so **rotate it before real club data**: in the Neon SQL editor
+  (branch `production`, database `ringportal`) run
+  `ALTER ROLE ringportal_app_login PASSWORD '<new random password, 32+ letters and digits>';`
+  then update `DATABASE_URL` in Vercel → ringportal-production → Settings → Environment Variables
+  (Sensitive, Production only) and redeploy.
 - The owner admin account exists on production. Two-factor setup is forced at first sign-in.
-- Import the England Boxing directory from Admin → Directory → Import, using
-  `data/england-boxing-directory.csv`.
+- Import the England Boxing directory: sign in as the owner, then Admin → Directory →
+  "Import England Boxing directory" (one click; uses the file bundled with the app).
