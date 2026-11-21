@@ -8,6 +8,7 @@ import { hit, LIMITS } from '@/server/auth/rate-limit';
 import type { ClubSession } from '@/server/auth/session';
 import { boxerCards, clubNames, type BoxerCard, type ClubName } from '@/server/cross-club';
 import { countProposalsNeedingAction } from '@/server/proposals/service';
+import { assertNotBlocked, blockState, type BlockState } from '@/server/clubs/blocks';
 import { MESSAGE_MAX, type ConversationKind } from '@/lib/messaging';
 
 // Input -----------------------------------------------------------------------
@@ -53,6 +54,7 @@ export async function openConversation(session: ClubSession, input: OpenConversa
       boxerId = card.id;
     }
 
+    await assertNotBlocked(tx, session.clubId, otherClubId);
     const [low, high] = pair(session.clubId, otherClubId);
     const find = () =>
       tx
@@ -221,6 +223,7 @@ export type ConversationThread = {
   messages: MessageView[];
   hasEarlier: boolean;
   lastReadMessageId: number;
+  block: BlockState;
 };
 
 export async function getConversation(session: ClubSession, id: string): Promise<ConversationThread | null> {
@@ -235,7 +238,8 @@ export async function getConversation(session: ClubSession, id: string): Promise
       .from(conversationClubState)
       .where(and(eq(conversationClubState.conversationId, id), eq(conversationClubState.clubId, me)));
     const thread = await loadMessages(tx, me, id, {});
-    return { conversation: summary!, messages: thread.items, hasEarlier: thread.hasEarlier, lastReadMessageId: Number(state?.lastRead ?? 0) };
+    const block = await blockState(tx, me, row.club_low_id === me ? row.club_high_id : row.club_low_id);
+    return { conversation: summary!, messages: thread.items, hasEarlier: thread.hasEarlier, lastReadMessageId: Number(state?.lastRead ?? 0), block };
   });
 }
 
@@ -269,6 +273,7 @@ export async function sendMessage(session: ClubSession, id: string, body: string
     // The other club must still be on RingPortal; unapproved/suspended clubs keep history but receive nothing new.
     const other = (await clubNames(tx, [otherOf(c, session.clubId)])).get(otherOf(c, session.clubId));
     if (!other?.approved) throw new ApiError('conflict', 'This club is not currently active on RingPortal, so new messages cannot be sent.');
+    await assertNotBlocked(tx, session.clubId, otherOf(c, session.clubId));
     const [m] = await tx
       .insert(messages)
       .values({ conversationId: id, senderClubId: session.clubId, senderUserId: session.clubUserId, body })

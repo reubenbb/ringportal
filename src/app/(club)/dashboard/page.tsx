@@ -12,6 +12,11 @@ import { STATUS_LABEL, STATUS_TONE } from '@/lib/proposals';
 
 export const metadata: Metadata = { title: 'Overview' };
 
+function daysUntil(isoDate: string): number {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+  return Math.round((Date.parse(`${isoDate}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+}
+
 export default async function DashboardPage() {
   const session = await requireClubPage();
   const club = await getClubOverview(session);
@@ -27,6 +32,11 @@ export default async function DashboardPage() {
         {club.isDemo ? (
           <Alert tone="warning" title="Demonstration club">
             This club and its data exist for testing only. It is not a real or verified club.
+          </Alert>
+        ) : null}
+        {club.status === 'approved' && club.affiliationExpiresOn && daysUntil(club.affiliationExpiresOn) <= 30 ? (
+          <Alert tone="warning" title="Affiliation renewal due">
+            Your recorded England Boxing affiliation expires on {formatDate(club.affiliationExpiresOn)}. After that date your club moves to re-verification until an administrator confirms the renewal.
           </Alert>
         ) : null}
         {club.status !== 'approved' ? (

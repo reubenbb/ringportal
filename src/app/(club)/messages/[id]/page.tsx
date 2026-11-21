@@ -46,7 +46,8 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
         hasEarlier={thread.hasEarlier}
         lastReadMessageId={thread.lastReadMessageId}
         otherClubName={c.otherClub.name}
-        canSend={c.otherClub.approved}
+        canSend={c.otherClub.approved && thread.block === 'none'}
+        cannotSendReason={thread.block === 'mine' ? 'You have blocked this club. Unblock it from its club profile to send messages.' : thread.block === 'theirs' ? 'You cannot send messages to this club.' : undefined}
       />
       <div className="mt-6">
         <ReasonForm

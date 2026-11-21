@@ -64,6 +64,11 @@ export const clubs = pgTable(
     affiliationExpiresOn: date('affiliation_expires_on', { mode: 'string' }),
     /** Governing-body region (England Boxing regions from the directory). Used as a matchmaking filter. */
     region: text('region'),
+    /** Club-edited profile, shown to other approved clubs only. Club contact details, never a person's. */
+    about: text('about'),
+    website: text('website'),
+    contactEmail: text('contact_email'),
+    trainingVenue: text('training_venue'),
     status: clubStatus('status').notNull().default('draft'),
     statusReason: text('status_reason'),
     statusChangedAt: ts('status_changed_at').notNull().defaultNow(),
@@ -790,5 +795,28 @@ export const reports = pgTable(
     index('reports_status_idx').on(t.status, t.createdAt),
     uniqueIndex('reports_open_uq').on(t.reporterClubId, t.conversationId).where(sql`${t.status} = 'open'`),
     check('reports_reason_len', sql`char_length(${t.reason}) between 10 and 1000`),
+  ],
+);
+
+// Club blocks ------------------------------------------------------------------
+// A club may block another club. While either has blocked the other, neither can
+// message, propose bouts or offer sparring partners to the other, and their boxers
+// are left out of each other's matchmaking results. History is kept.
+
+export const clubBlocks = pgTable(
+  'club_blocks',
+  {
+    blockerClubId: uuid('blocker_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    blockedClubId: uuid('blocked_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.blockerClubId, t.blockedClubId] }),
+    index('club_blocks_blocked_idx').on(t.blockedClubId),
+    check('club_blocks_not_self', sql`${t.blockerClubId} <> ${t.blockedClubId}`),
   ],
 );

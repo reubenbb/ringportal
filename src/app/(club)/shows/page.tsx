@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { NotApprovedNotice } from '@/components/boxers/not-approved';
 import { RequestCard } from '@/components/shows/request-card';
 import { buttonClass } from '@/components/ui/button';
+import { MonthGrid, parseMonth } from '@/components/shows/month-grid';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { fitsRequest, formatShowDate, formatShowTime } from '@/lib/shows';
 import { requireApprovedClubPage } from '@/server/auth/guards';
@@ -10,7 +11,7 @@ import { ownBoxersForProposal } from '@/server/proposals/service';
 import { listRequests, listShows, type ShowView } from '@/server/shows/service';
 
 export const metadata: Metadata = { title: 'Shows' };
-const TABS = { upcoming: 'Upcoming shows', requests: 'Opponent requests', mine: 'My listings' } as const;
+const TABS = { upcoming: 'Upcoming shows', month: 'Month view', requests: 'Opponent requests', mine: 'My listings' } as const;
 type Tab = keyof typeof TABS;
 
 function ShowRow({ s }: { s: ShowView }) {
@@ -36,7 +37,7 @@ function ShowRow({ s }: { s: ShowView }) {
   );
 }
 
-export default async function ShowsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function ShowsPage({ searchParams }: { searchParams: Promise<{ tab?: string; m?: string }> }) {
   const { session, approved } = await requireApprovedClubPage();
   if (!approved) return <NotApprovedNotice feature="Shows and opponent requests" />;
   const sp = await searchParams;
@@ -63,6 +64,7 @@ export default async function ShowsPage({ searchParams }: { searchParams: Promis
         <Link href="/calendar" className="ml-auto rounded-md px-3 py-2 text-sm font-semibold">Public calendar →</Link>
       </nav>
       {tab === 'upcoming' ? <Upcoming shows={await listShows(session, 'upcoming')} /> : null}
+      {tab === 'month' ? <MonthGrid month={parseMonth(sp.m)} shows={(await listShows(session, 'upcoming')).map((x) => ({ id: x.id, name: x.name, startsAt: x.startsAt, href: `/shows/${x.id}` }))} monthHref={(m) => `/shows?tab=month&m=${m}`} /> : null}
       {tab === 'requests' ? <Requests session={session} /> : null}
       {tab === 'mine' ? <Mine session={session} /> : null}
     </>

@@ -9,6 +9,7 @@ import { hit, LIMITS } from '@/server/auth/rate-limit';
 import type { ClubSession } from '@/server/auth/session';
 import { boxerCards, clubNames, isUniqueViolation, type BoxerCard, type ClubName } from '@/server/cross-club';
 import { gate, score } from '@/lib/matchmaking';
+import { assertNotBlocked } from '@/server/clubs/blocks';
 import { ukToday } from '@/lib/proposals';
 
 /**
@@ -84,6 +85,7 @@ export async function offerPartner(session: ClubSession, requestId: string, inpu
       const [r] = await tx.select().from(sparringRequests).where(eq(sparringRequests.id, requestId));
       if (!r || r.clubId === session.clubId) return null;
       if (r.status !== 'open') throw new ApiError('conflict', 'This sparring request is no longer open.');
+      await assertNotBlocked(tx, session.clubId, r.clubId);
       const cards = await boxerCards(tx, [r.boxerId, input.boxerId]);
       const theirs = cards.get(r.boxerId);
       const mine = cards.get(input.boxerId);

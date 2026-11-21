@@ -18,6 +18,7 @@ import { hit, LIMITS } from '@/server/auth/rate-limit';
 import type { ClubSession } from '@/server/auth/session';
 import { boxerCards, clubNames, isUniqueViolation, type BoxerCard, type ClubName } from '@/server/cross-club';
 import { MESSAGE_MAX } from '@/lib/messaging';
+import { assertNotBlocked } from '@/server/clubs/blocks';
 import {
   BOUT_TYPES,
   OPEN_STATUSES,
@@ -148,6 +149,7 @@ export async function createProposal(session: ClubSession, input: CreateProposal
     if (UNAVAILABLE.has(opponent.availability)) {
       throw new ApiError('validation_failed', 'Check the highlighted fields', { receivingBoxerId: 'This boxer is currently marked injured/medical or inactive by their club' });
     }
+    await assertNotBlocked(tx, session.clubId, opponent.clubId);
     if (opponent.sex !== own.sex) {
       throw new ApiError('validation_failed', 'Check the highlighted fields', { proposingBoxerId: 'Both boxers must be in the same sex category' });
     }

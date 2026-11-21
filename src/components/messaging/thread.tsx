@@ -15,13 +15,15 @@ type Props = {
   lastReadMessageId: number;
   otherClubName: string;
   canSend: boolean;
+  /** Shown instead of the composer when sending is not possible. */
+  cannotSendReason?: string;
   /** Shorter scroll area when embedded in another page. */
   compact?: boolean;
 };
 
 const POLL_MS = 10_000;
 
-export function Thread({ conversationId, initialMessages, hasEarlier: initialHasEarlier, lastReadMessageId, otherClubName, canSend, compact }: Props) {
+export function Thread({ conversationId, initialMessages, hasEarlier: initialHasEarlier, lastReadMessageId, otherClubName, canSend, cannotSendReason, compact }: Props) {
   const composerId = useId();
   const countId = useId();
   const [items, setItems] = useState<MessageView[]>(initialMessages);
@@ -228,7 +230,7 @@ export function Thread({ conversationId, initialMessages, hasEarlier: initialHas
           ) : null}
         </form>
       ) : (
-        <p className="mt-3 text-sm text-muted">{otherClubName} is not currently active on RingPortal, so new messages cannot be sent.</p>
+        <p className="mt-3 text-sm text-muted">{cannotSendReason ?? `${otherClubName} is not currently active on RingPortal, so new messages cannot be sent.`}</p>
       )}
     </div>
   );

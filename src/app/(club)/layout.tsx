@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { href: '/shows', label: 'Shows', icon: 'calendar' },
   { href: '/sparring', label: 'Sparring', icon: 'sparring' },
   { href: '/messages', label: 'Messages', icon: 'messages', badge: 'messages' },
+  { href: '/club-profile', label: 'Club profile', icon: 'clubs' },
   { href: '/account', label: 'Account security', icon: 'shield' },
 ];
 

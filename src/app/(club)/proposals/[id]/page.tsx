@@ -231,7 +231,8 @@ export default async function ProposalPage({ params, searchParams }: { params: P
               hasEarlier={thread.hasEarlier}
               lastReadMessageId={thread.lastReadMessageId}
               otherClubName={other.name}
-              canSend={other.approved}
+              canSend={other.approved && thread.block === 'none'}
+              cannotSendReason={thread.block === 'mine' ? 'You have blocked this club. Unblock it from its club profile to send messages.' : thread.block === 'theirs' ? 'You cannot send messages to this club.' : undefined}
               compact
             />
           </Card>

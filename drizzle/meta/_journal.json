@@ -134,6 +134,20 @@
       "when": 1794854102940,
       "tag": "0018_club_claim_own",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795248304109,
+      "tag": "0019_profile_blocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795248304977,
+      "tag": "0020_profile_blocks_security",
+      "breakpoints": true
     }
   ]
 }

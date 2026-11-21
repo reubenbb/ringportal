@@ -5,6 +5,7 @@ const env = process.env as Record<string, string | undefined>;
 env.NODE_ENV = 'test';
 env.DATABASE_URL = TEST_APP_URL;
 env.APP_ORIGIN = TEST_ORIGIN;
+env.CRON_SECRET = 'test-cron-secret-0123456789abcdef0123456789';
 env.MFA_ENCRYPTION_KEY ??= randomBytes(32).toString('base64');
 env.LOG_HASH_KEY ??= randomBytes(32).toString('base64');
 env.MAIL_TRANSPORT = 'console';

@@ -18,6 +18,8 @@ const schema = z
     LOG_HASH_KEY: base64Key32,
     /** 'console' prints mail to the server log (development/test only). 'disabled' sends nothing. */
     MAIL_TRANSPORT: z.enum(['console', 'disabled']).default('disabled'),
+    /** Shared secret Vercel Cron sends as a bearer token. Scheduled jobs refuse to run without it. */
+    CRON_SECRET: z.string().min(32).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {
