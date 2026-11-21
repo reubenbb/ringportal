@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LegalLinks } from '@/components/legal/legal-links';
 import { BrandLockup } from '@/components/brand/logo';
 import { buttonClass } from '@/components/ui/button';
 import { getClubSession } from '@/server/auth/guards';
@@ -38,7 +39,7 @@ export default async function Home() {
         </div>
       </main>
       <footer className="border-t border-line">
-        <div className="mx-auto max-w-6xl px-5 py-6 text-xs text-muted">© RingPortal. Club access is manually verified.</div>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs text-muted"><span>© RingPortal. Club access is manually verified.</span><LegalLinks /></div>
       </footer>
     </div>
   );

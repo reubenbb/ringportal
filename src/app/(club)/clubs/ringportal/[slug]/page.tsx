@@ -10,6 +10,8 @@ import { Card } from '@/components/ui/card';
 import { getBlockState } from '@/server/clubs/blocks';
 import { getClubProfile, type ClubProfile } from '@/server/clubs/profile';
 import { pendingOutgoingFor } from '@/server/transfers/service';
+import { logoVersion } from '@/server/clubs/logo';
+import { ClubLogo } from '@/components/clubs/club-logo';
 import { Badge, PageHeader } from '@/components/ui/card';
 
 function ProfileCard({ p }: { p: ClubProfile | null }) {
@@ -58,13 +60,14 @@ export default async function RingPortalClubPage({ params }: { params: Promise<{
       </>
     );
   }
-  const [roster, profile, block] = await Promise.all([rosterForClubViewer(session, club.id), getClubProfile(session, club.id), getBlockState(session, club.id)]);
+  const [roster, profile, block, logo] = await Promise.all([rosterForClubViewer(session, club.id), getClubProfile(session, club.id), getBlockState(session, club.id), logoVersion(session, club.id)]);
   return (
     <>
       <Link href="/clubs" className="mb-4 inline-block text-sm font-semibold">← Club directory</Link>
       <PageHeader
         eyebrow="RingPortal club"
         title={club.name}
+        media={<ClubLogo clubId={club.id} name={club.name} version={logo} size={64} />}
         description={
           <span className="inline-flex flex-wrap items-center gap-2">
             {club.governingBody}

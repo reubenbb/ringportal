@@ -8,13 +8,15 @@ import { formatDate } from '@/lib/club-status';
 import { requireApprovedClubPage } from '@/server/auth/guards';
 import { listMyBlocks } from '@/server/clubs/blocks';
 import { getClubProfile } from '@/server/clubs/profile';
+import { logoVersion } from '@/server/clubs/logo';
+import { LogoUpload } from '@/components/clubs/logo-upload';
 
 export const metadata: Metadata = { title: 'Club profile' };
 
 export default async function ClubProfilePage() {
   const { session, approved } = await requireApprovedClubPage();
   if (!approved) return <NotApprovedNotice feature="Your club profile" />;
-  const [profile, blocks] = await Promise.all([getClubProfile(session, session.clubId), listMyBlocks(session)]);
+  const [profile, blocks, logo] = await Promise.all([getClubProfile(session, session.clubId), listMyBlocks(session), logoVersion(session, session.clubId)]);
   return (
     <>
       <PageHeader
@@ -24,6 +26,9 @@ export default async function ClubProfilePage() {
         actions={<Link href={`/clubs/ringportal/${session.clubSlug}`} className="text-sm font-semibold">See how other clubs see it →</Link>}
       />
       <div className="flex flex-col gap-6">
+        <Card title="Logo">
+          <LogoUpload clubId={session.clubId} name={session.clubName} version={logo} />
+        </Card>
         <Card title="Profile details">
           <ClubProfileForm initial={profile ?? { region: null, about: null, website: null, contactEmail: null, trainingVenue: null }} />
           <p className="mt-4 text-sm text-muted">Region: <span className="text-ink">{profile?.region ?? 'Not recorded'}</span>. To change your club’s name, region or affiliation, contact a RingPortal administrator.</p>

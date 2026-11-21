@@ -2,6 +2,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { LEGAL_VERSION } from '@/lib/legal';
 import { withAuth } from '@/server/db/client';
 import { clubClaims, clubUsers, clubs, directoryClubs } from '@/server/db/schema';
 import { audit } from '@/server/audit';
@@ -33,6 +34,7 @@ export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   authorised: z.literal(true, { error: 'Confirm that you are authorised to register this club' }),
+  acceptTerms: z.literal(true, { error: 'Accept the terms of use and privacy notice to register' }),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -103,7 +105,7 @@ export async function registerClub(input: RegisterInput, meta: Meta): Promise<st
         action: 'club.registered',
         targetType: 'club',
         targetId: club!.id,
-        metadata: { claim: Boolean(input.directoryClubId) },
+        metadata: { claim: Boolean(input.directoryClubId), legalVersion: LEGAL_VERSION },
         ipHash: meta.ipHash,
       });
       return createClubSession(tx, { clubUserId: user!.id, clubId: club!.id, ...meta });

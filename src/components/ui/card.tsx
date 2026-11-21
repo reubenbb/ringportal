@@ -17,13 +17,16 @@ export function Card({ title, description, actions, children, className = '' }: 
   );
 }
 
-export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ eyebrow, title, description, actions, media }: { eyebrow?: string; title: string; description?: ReactNode; actions?: ReactNode; media?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
+      <div className="flex items-end gap-4">
+        {media}
+        <div>
         {eyebrow ? <p className="rp-eyebrow mb-1">{eyebrow}</p> : null}
         <h1 className="rp-display text-4xl text-ink">{title}</h1>
         {description ? <p className="mt-2 max-w-2xl text-sm text-muted">{description}</p> : null}
+        </div>
       </div>
       {actions}
     </div>

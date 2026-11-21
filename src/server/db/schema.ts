@@ -856,3 +856,25 @@ export const boxerTransfers = pgTable(
     check('boxer_transfers_note_len', sql`coalesce(char_length(${t.note}), 0) <= 500`),
   ],
 );
+
+// Club logos -----------------------------------------------------------------
+// Re-encoded server-side to a small WebP (metadata stripped) before storage, so the
+// stored bytes are always our own output, never the uploaded file.
+
+export const clubLogos = pgTable(
+  'club_logos',
+  {
+    clubId: uuid('club_id')
+      .primaryKey()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    image: bytea('image').notNull(),
+    width: smallint('width').notNull(),
+    height: smallint('height').notNull(),
+    sha256: text('sha256').notNull(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    check('club_logos_size', sql`octet_length(${t.image}) <= 204800`),
+    check('club_logos_dims', sql`${t.width} between 1 and 512 and ${t.height} between 1 and 512`),
+  ],
+);

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { LegalLinks } from '@/components/legal/legal-links';
 import { BrandLockup } from '@/components/brand/logo';
 
 /** Split layout for sign-in and recovery screens. Imagery is equipment only — no identifiable people. */
@@ -31,6 +32,7 @@ export function AuthLayout({ eyebrow, title, intro, children, footer, admin = fa
           {intro ? <div className="mt-3 text-sm text-muted">{intro}</div> : null}
           <div className="mt-8">{children}</div>
           {footer ? <div className="mt-8 border-t border-line pt-6 text-sm text-muted">{footer}</div> : null}
+          <LegalLinks className="mt-8" />
         </main>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from '@/lib/legal';
 import { afterAll, describe, expect, it } from 'vitest';
 import { POST as registerApi } from '@/app/api/auth/register/route';
 import { GET as lookupApi } from '@/app/api/auth/register/directory/route';
@@ -13,7 +14,7 @@ afterAll(async () => {
 });
 
 const PW = 'a-long-registration-password';
-const body = (o: Record<string, unknown> = {}) => ({ clubName: `New Club ${uid()}`, governingBodyId: 1, affiliationNumber: '', directoryClubId: null, email: `reg-${uid()}@example.test`, password: PW, authorised: true, ...o });
+const body = (o: Record<string, unknown> = {}) => ({ clubName: `New Club ${uid()}`, governingBodyId: 1, affiliationNumber: '', directoryClubId: null, email: `reg-${uid()}@example.test`, password: PW, authorised: true, acceptTerms: true, ...o });
 const register = (b: Record<string, unknown>, ip?: string) => registerApi(req('POST', '/api/auth/register', { body: b, ip }), ctx);
 const fields = async (res: Response) => (await json<{ error: { fields: Record<string, string> } }>(res)).error.fields;
 
@@ -46,12 +47,13 @@ describe('club registration', () => {
     expect(boxer.status).toBe(403);
     const audit = await owner.query(`select metadata from audit_log where action = 'club.registered' order by id desc limit 1`);
     expect(JSON.stringify(audit.rows[0].metadata)).not.toContain(PW);
+    expect(audit.rows[0].metadata.legalVersion).toBe(LEGAL_VERSION); // which terms the club accepted
   });
 
   it('validates input and cannot set status, demo flag or approval through the body', async () => {
-    const res = await register(body({ clubName: 'x', governingBodyId: 999, email: 'nope', password: 'short', authorised: false, affiliationNumber: '<script>' }));
+    const res = await register(body({ clubName: 'x', governingBodyId: 999, email: 'nope', password: 'short', authorised: false, acceptTerms: false, affiliationNumber: '<script>' }));
     expect(res.status).toBe(422);
-    expect(Object.keys(await fields(res)).sort()).toEqual(['affiliationNumber', 'authorised', 'clubName', 'email', 'password']);
+    expect(Object.keys(await fields(res)).sort()).toEqual(['acceptTerms', 'affiliationNumber', 'authorised', 'clubName', 'email', 'password']);
     // England Boxing only: any other governing body in the request is ignored.
     const b = body({ status: 'approved', isDemo: true, is_demo: true, governingBodyId: 2 });
     expect((await register(b)).status).toBe(201);

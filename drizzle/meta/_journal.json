@@ -169,6 +169,20 @@
       "when": 1795250740299,
       "tag": "0023_hide_blocked_listings",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795258249630,
+      "tag": "0024_club_logos",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795258250505,
+      "tag": "0025_club_logos_security",
+      "breakpoints": true
     }
   ]
 }

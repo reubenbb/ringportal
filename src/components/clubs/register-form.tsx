@@ -44,6 +44,7 @@ export function RegisterForm({ regions }: { regions: string[] }) {
       email: f.get('email'),
       password: f.get('password'),
       authorised: f.get('authorised') === 'on',
+      acceptTerms: f.get('acceptTerms') === 'on',
     });
     if (data) {
       router.replace('/dashboard');
@@ -118,6 +119,16 @@ export function RegisterForm({ regions }: { regions: string[] }) {
           <span>I am authorised to register this club (for example as its competition secretary or head coach).</span>
         </label>
         {fieldErrors.authorised ? <p id={`${id}-auth-err`} className="mt-1 text-sm font-medium text-danger">✕ {fieldErrors.authorised}</p> : null}
+      </div>
+      <div>
+        <label className="flex items-start gap-2 text-sm text-ink">
+          <input type="checkbox" name="acceptTerms" required className="mt-1" aria-describedby={fieldErrors.acceptTerms ? `${id}-terms-err` : undefined} onChange={() => clearField('acceptTerms')} />
+          <span>
+            I accept the <Link href="/terms" target="_blank" className="font-semibold">terms of use</Link> for my club and have read the{' '}
+            <Link href="/privacy" target="_blank" className="font-semibold">privacy notice</Link>.
+          </span>
+        </label>
+        {fieldErrors.acceptTerms ? <p id={`${id}-terms-err`} className="mt-1 text-sm font-medium text-danger">✕ {fieldErrors.acceptTerms}</p> : null}
       </div>
       <Button type="submit" pending={pending}>
         {pending ? 'Registering…' : 'Register club'}

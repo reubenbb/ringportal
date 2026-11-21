@@ -96,3 +96,32 @@ Code is ready; email stays off (`MAIL_TRANSPORT=disabled`) until these are done:
 5. Redeploy and request a password reset for a test account; check it arrives and the link works.
 
 Logs record only the subject, HTTP status and Resend error name: never the recipient, body or key.
+
+## 7. Monitoring
+
+- **Uptime:** `GET /api/health` returns `200 {"status":"ok","database":"ok"}`, or `503` if the database
+  is unreachable. It needs no sign-in and reveals only up/down and the commit. While Vercel login
+  protection is on, an external monitor (e.g. UptimeRobot or Better Stack, every 5 minutes) must send the
+  project's *Protection Bypass for Automation* secret as the `x-vercel-protection-bypass` header.
+  After launch on the custom domain, protection is lifted and the header is no longer needed.
+- **Errors:** check Vercel → Observability → Errors after each deploy. Unhandled API errors are logged
+  as `[api] unhandled error` with the path and error name only.
+- **Scheduled job:** each run logs `[cron] affiliation-expiry {"moved": n}`. If no line appears for a day,
+  check Vercel → Cron Jobs.
+- **Database:** Neon console → Monitoring for connections and storage. The plan's storage limit applies.
+
+## 8. Production environment
+
+- Vercel project `ringportal-production` (separate from the staging project `ringportal`). It deploys
+  only on request (no Git auto-deploy). Vercel login protection is on for all URLs until launch.
+- Its production env vars are `MFA_ENCRYPTION_KEY`, `LOG_HASH_KEY` and `CRON_SECRET` (new values, not
+  the staging ones), plus `MAIL_TRANSPORT=disabled`. `DATABASE_URL` is set by the owner (see below).
+- **Owner step (one time):** in the Neon console, open the SQL editor on the `production` branch,
+  database `ringportal`, and run
+  `ALTER ROLE ringportal_app_login LOGIN PASSWORD '<new random password of 32+ characters>';`
+  Then, in Vercel → ringportal-production → Settings → Environment Variables, add `DATABASE_URL`
+  (Sensitive, Production only):
+  `postgresql://ringportal_app_login:<that password>@ep-orange-cake-zakovkba-pooler.c-2.eu-west-2.aws.neon.tech/ringportal?sslmode=require&channel_binding=require`
+- The owner admin account exists on production. Two-factor setup is forced at first sign-in.
+- Import the England Boxing directory from Admin → Directory → Import, using
+  `data/england-boxing-directory.csv`.
