@@ -8,6 +8,8 @@ import type { ClubSession } from '@/server/auth/session';
 import { boxerCards, type BoxerCard } from '@/server/cross-club';
 import { DEFAULTS, LIMITS, SORTS, gate, score, type Factor, type Sort } from '@/lib/matchmaking';
 import type { Availability } from '@/lib/boxers';
+import { competitiveCheck, type EbCategory } from '@/lib/eb-rules';
+import { pairFacts } from '@/server/eb-facts';
 
 const num = (min: number, max: number) => z.coerce.number().min(min).max(max);
 
@@ -49,6 +51,8 @@ export type MatchResult = {
   totalBouts: number;
   skillsBouts: number;
   availability: Availability;
+  /** England Boxing 2026 matrix category, worked out from the date of birth in the database. */
+  category: EbCategory | null;
   score: number;
   factors: Factor[];
   flags: string[];
@@ -64,6 +68,7 @@ type Row = {
 
 export type MatchSearch = {
   own: BoxerCard;
+  ownCategory: EbCategory | null;
   /** When the club last entered its own boxer's weight (own club only). */
   ownWeightRecordedAt: string;
   filters: { toleranceKg: number; ageGap: number; boutGap: number | null; region: string | null; includeUnavailable: boolean; sort: Sort; minAge: number; maxAge: number };
@@ -85,6 +90,7 @@ export async function searchMatches(session: ClubSession, ownBoxerId: string, q:
       select * from match_candidates(${own.sex}::boxer_sex, ${own.weightKg - toleranceKg}::numeric, ${own.weightKg + toleranceKg}::numeric,
         ${minAge}::int, ${maxAge}::int, ${ENGLAND_BOXING_ID}::smallint, ${includeUnavailable}, ${q.region ?? null}::text)`);
     const sort = q.sort ?? 'best';
+    const facts = await pairFacts(tx, own.id, res.rows.map((r) => r.id));
     const all = res.rows
       .map((r): MatchResult => {
         const c = {
@@ -94,7 +100,10 @@ export async function searchMatches(session: ClubSession, ownBoxerId: string, q:
           totalBouts: Number(r.total_bouts), skillsBouts: Number(r.skills_bouts), availability: r.availability,
         };
         const s = score(own, c, { toleranceKg, ageGap });
-        return { ...c, score: s.total, factors: s.factors, flags: s.flags, blocked: gate(own, c) };
+        const f = facts.get(c.id);
+        // England Boxing matrix: refusals join the gates; cautions join the flags.
+        const eb = f ? competitiveCheck(f, own, c) : { fails: ['Age category could not be checked'], flags: [] };
+        return { ...c, category: f?.category ?? null, score: s.total, factors: s.factors, flags: [...eb.flags, ...s.flags], blocked: [...gate(own, c), ...eb.fails] };
       })
       .filter((r) => q.boutGap === undefined || Math.abs(r.totalBouts - own.totalBouts) <= q.boutGap);
     const by: Record<Sort, (a: MatchResult, b: MatchResult) => number> = {
@@ -106,8 +115,10 @@ export async function searchMatches(session: ClubSession, ownBoxerId: string, q:
     // Stable, predictable order: chosen sort, then score, then id.
     all.sort((a, b) => by[sort](a, b) || b.score - a.score || a.id.localeCompare(b.id));
     const [recorded] = await tx.select({ at: boxers.weightRecordedAt }).from(boxers).where(eq(boxers.id, own.id));
+    const ownCategory = (await pairFacts(tx, own.id, [own.id])).get(own.id)?.ownCategory ?? null;
     return {
       own,
+      ownCategory,
       ownWeightRecordedAt: recorded!.at.toISOString(),
       filters: { toleranceKg, ageGap, boutGap: q.boutGap ?? null, region: q.region ?? null, includeUnavailable, sort, minAge, maxAge },
       suitable: all.filter((r) => !r.blocked.length).slice(0, 100),

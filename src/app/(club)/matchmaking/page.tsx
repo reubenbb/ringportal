@@ -7,6 +7,7 @@ import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { buttonClass } from '@/components/ui/button';
 import { AVAILABILITY_LABEL, AVAILABILITY_TONE, SEX_LABEL, formatKg, recordLabel, weightAgeDays, weightIsStale } from '@/lib/boxers';
 import { DEFAULTS, LIMITS, SORTS, SORT_LABEL } from '@/lib/matchmaking';
+import { EB_CATEGORY_LABEL } from '@/lib/eb-rules';
 import { requireApprovedClubPage } from '@/server/auth/guards';
 import { listRegions, parseMatchQuery, searchMatches, type MatchResult } from '@/server/matchmaking/service';
 import { ownBoxersForProposal } from '@/server/proposals/service';
@@ -157,7 +158,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
           ) : null}
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted" role="status">
-              <strong className="text-ink">{search.suitable.length}</strong> suitable {search.suitable.length === 1 ? 'opponent' : 'opponents'} for {search.own.displayName}: {SEX_LABEL[search.own.sex].toLowerCase()}, {formatKg(search.own.weightKg - search.filters.toleranceKg)}–{formatKg(search.own.weightKg + search.filters.toleranceKg)}, aged {search.filters.minAge}–{search.filters.maxAge}{search.filters.region ? `, ${search.filters.region} region` : ''}.
+              <strong className="text-ink">{search.suitable.length}</strong> suitable {search.suitable.length === 1 ? 'opponent' : 'opponents'} for {search.own.displayName}{search.ownCategory ? ` (${EB_CATEGORY_LABEL[search.ownCategory]})` : ''}: {SEX_LABEL[search.own.sex].toLowerCase()}, {formatKg(search.own.weightKg - search.filters.toleranceKg)}–{formatKg(search.own.weightKg + search.filters.toleranceKg)}, aged {search.filters.minAge}–{search.filters.maxAge}{search.filters.region ? `, ${search.filters.region} region` : ''}.
             </p>
             <nav aria-label="Result view" className="flex gap-1">
               {(['table', 'cards'] as const).map((v) => (
@@ -184,7 +185,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
                     <span className="rp-display text-2xl tabular-nums text-ink" title="Suitability score out of 100">{r.score}</span>
                   </div>
                   <p className="text-sm text-ink">
-                    {r.ageYears} yrs · {formatKg(r.weightKg)} · {recordLabel(r.competitiveWins, r.competitiveLosses, r.competitiveDraws)} · {r.skillsBouts} skills
+                    {r.ageYears} yrs{r.category ? ` (${EB_CATEGORY_LABEL[r.category]})` : ''} · {formatKg(r.weightKg)} · {recordLabel(r.competitiveWins, r.competitiveLosses, r.competitiveDraws)} · {r.skillsBouts} skills
                   </p>
                   <Badge tone={AVAILABILITY_TONE[r.availability]}>{AVAILABILITY_LABEL[r.availability]}</Badge>
                   <Why r={r} />
@@ -215,7 +216,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
                       <tr key={r.id} className="align-top">
                         <td className="px-5 py-3 text-lg font-bold tabular-nums text-ink">{r.score}</td>
                         <td className="px-2 py-3"><Name r={r} /></td>
-                        <td className="px-2 py-3 tabular-nums text-ink">{r.ageYears}</td>
+                        <td className="px-2 py-3 tabular-nums text-ink">{r.ageYears}{r.category ? <span className="block text-xs text-muted">{EB_CATEGORY_LABEL[r.category]}</span> : null}</td>
                         <td className="px-2 py-3 text-right tabular-nums text-ink">{formatKg(r.weightKg)}</td>
                         <td className="px-2 py-3 text-right tabular-nums text-ink">{recordLabel(r.competitiveWins, r.competitiveLosses, r.competitiveDraws)}</td>
                         <td className="px-2 py-3 text-right tabular-nums text-ink">{r.skillsBouts}</td>
@@ -230,7 +231,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
           )}
 
           {search.blocked.length ? (
-            <Card title="Not suggested" description="Shown because you asked to include unavailable boxers. These are not suitable matches right now." className="mt-6">
+            <Card title="Not suggested" description="These boxers fail a check, shown under each name, so they are not suitable matches right now." className="mt-6">
               <ul className="divide-y divide-line">
                 {search.blocked.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-sm">
@@ -246,7 +247,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
           ) : null}
 
           <p className="mt-4 max-w-3xl text-xs text-muted">
-            Scores are out of 100: weight closeness (40), age closeness (25), competitive experience (25) and skills bouts (10). Under-18s are only matched with under-18s. RingPortal does not decide eligibility and a suggestion is not England Boxing approval: both clubs must check every bout against England Boxing’s rules. Skills bouts are never counted in a competitive record.
+            Scores are out of 100: weight closeness (40), age closeness (25), competitive experience (25) and skills bouts (10). Under-18s are only matched with under-18s. Pairings are checked against the age categories, age gaps and Minors/Schools weight limit in the England Boxing Rule Book 26.3 (2026 Club Boxing Matrix). A suggestion is not England Boxing approval: coaches still check medicals, weight-category spans and every other rule. Skills bouts are never counted in a competitive record.
           </p>
         </>
       ) : null}

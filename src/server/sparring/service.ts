@@ -11,6 +11,9 @@ import { boxerCards, clubNames, isUniqueViolation, type BoxerCard, type ClubName
 import { gate, score } from '@/lib/matchmaking';
 import { assertNotBlocked } from '@/server/clubs/blocks';
 import { ukToday } from '@/lib/proposals';
+import { pairFacts } from '@/server/eb-facts';
+
+const UNDER_TEN = 'England Boxing does not allow under-10s to spar';
 
 /**
  * Individual sparring: one boxer looking for one partner. Deliberately separate
@@ -41,6 +44,7 @@ export async function createSparringRequest(session: ClubSession, input: z.infer
       const [b] = await tx.select({ id: boxers.id, availability: boxers.availability }).from(boxers).where(and(eq(boxers.id, input.boxerId), eq(boxers.clubId, session.clubId), isNull(boxers.archivedAt)));
       if (!b) throw new ApiError('validation_failed', 'Check the highlighted fields', { boxerId: 'Choose one of your active boxers' });
       if (b.availability === 'injured_medical' || b.availability === 'inactive') throw new ApiError('validation_failed', 'Check the highlighted fields', { boxerId: 'This boxer is marked injured/medical or inactive' });
+      if ((await pairFacts(tx, b.id, [b.id])).get(b.id)?.ownCategory === 'too_young') throw new ApiError('validation_failed', 'Check the highlighted fields', { boxerId: UNDER_TEN });
       const [r] = await tx.insert(sparringRequests).values({ clubId: session.clubId, ...input }).returning({ id: sparringRequests.id });
       await log(tx, session, 'sparring.request_created', 'sparring_request', r!.id, meta);
       return r!;
@@ -92,6 +96,8 @@ export async function offerPartner(session: ClubSession, requestId: string, inpu
       if (!theirs || !theirs.clubApproved || theirs.archived) throw new ApiError('conflict', 'This sparring request is no longer available.');
       if (!mine || mine.clubId !== session.clubId || mine.archived) throw new ApiError('validation_failed', 'Check the highlighted fields', { boxerId: 'Choose one of your active boxers' });
       const blocked = gate(theirs, mine);
+      const f = (await pairFacts(tx, mine.id, [theirs.id])).get(theirs.id);
+      if (!f || f.ownCategory === 'too_young' || f.category === 'too_young') blocked.push(UNDER_TEN);
       if (blocked.length) throw new ApiError('validation_failed', 'Check the highlighted fields', { boxerId: `Not a suitable partner: ${blocked[0]!.toLowerCase()}` });
       const [o] = await tx
         .insert(sparringOffers)

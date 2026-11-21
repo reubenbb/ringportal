@@ -192,7 +192,7 @@ describe('proposal conversations', () => {
     const a = await clubCtx();
     const b = await clubCtx();
     // Both juniors: under-18s are only proposed against under-18s.
-    const aBoxer = await createBoxer(a.club.id, { firstName: 'Jack', lastName: 'Thompson', dob: yearsAgo(16) });
+    const aBoxer = await createBoxer(a.club.id, { firstName: 'Jack', lastName: 'Thompson', dob: yearsAgo(15) });
     const bBoxer = await createBoxer(b.club.id, { firstName: 'Lewis', lastName: 'Carter', dob: yearsAgo(15) });
     const res = await proposalApi(
       req('POST', '/api/proposals', {

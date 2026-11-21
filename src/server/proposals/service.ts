@@ -19,6 +19,8 @@ import type { ClubSession } from '@/server/auth/session';
 import { boxerCards, clubNames, isUniqueViolation, type BoxerCard, type ClubName } from '@/server/cross-club';
 import { MESSAGE_MAX } from '@/lib/messaging';
 import { assertNotBlocked } from '@/server/clubs/blocks';
+import { pairFacts } from '@/server/eb-facts';
+import { competitiveCheck, skillsCheck } from '@/lib/eb-rules';
 import {
   BOUT_TYPES,
   CONFIRM_CHECKLIST_VERSION,
@@ -28,6 +30,7 @@ import {
   needsAction,
   ukToday,
   waitingOn,
+  type BoutType,
   type LifecycleState,
   type ProposalAction,
   type ProposalStatus,
@@ -159,6 +162,8 @@ export async function createProposal(session: ClubSession, input: CreateProposal
     if (!ownCard || ownCard.isJunior !== opponent.isJunior) {
       throw new ApiError('validation_failed', 'Check the highlighted fields', { proposingBoxerId: 'Under-18s can only be proposed against other under-18s' });
     }
+    const refusal = await matrixRefusal(tx, own.id, opponent.id, input.boutType);
+    if (refusal) throw new ApiError('validation_failed', 'Check the highlighted fields', { [input.boutType === 'skills' ? 'boutType' : 'receivingBoxerId']: refusal });
 
     const [existing] = await tx
       .select({ id: boutProposals.id })
@@ -226,6 +231,24 @@ export async function createProposal(session: ClubSession, input: CreateProposal
   });
 }
 
+// England Boxing matrix ---------------------------------------------------------
+
+/**
+ * First reason the 2026 Club Boxing Matrix (and Annex C2 for skills bouts) refuses this pairing, or null.
+ * Checked when a proposal is created, revised, accepted and confirmed, because ages and records move on.
+ */
+async function matrixRefusal(tx: Tx, ownBoxerId: string, otherBoxerId: string, boutType: BoutType): Promise<string | null> {
+  const cards = await boxerCards(tx, [ownBoxerId, otherBoxerId]);
+  const own = cards.get(ownBoxerId);
+  const other = cards.get(otherBoxerId);
+  const f = (await pairFacts(tx, ownBoxerId, [otherBoxerId])).get(otherBoxerId);
+  if (!own || !other || !f) return 'The boxers’ age categories could not be checked';
+  const competitive = competitiveCheck(f, own, other).fails;
+  if (competitive.length) return competitive[0]!;
+  if (boutType === 'skills') return skillsCheck(f, own, other)[0] ?? null;
+  return null;
+}
+
 // Actions -----------------------------------------------------------------------
 
 const STALE = 'This proposal has changed since you opened it. Refresh to see the latest terms before acting.';
@@ -258,6 +281,18 @@ export async function actOnProposal(session: ClubSession, id: string, input: Pro
     };
     if (!availableActions(state, session.clubId).includes(input.action)) {
       throw new ApiError('conflict', 'That action is not available for this proposal right now. Refresh to see its current status.');
+    }
+
+    // Re-check the matrix whenever a club moves the bout forward or changes its terms.
+    if (input.action === 'revise' || input.action === 'accept' || input.action === 'confirm') {
+      const mine = session.clubId === p.proposingClubId ? p.proposingBoxerId : p.receivingBoxerId;
+      const theirs = mine === p.proposingBoxerId ? p.receivingBoxerId : p.proposingBoxerId;
+      const boutType = input.action === 'revise' ? input.terms.boutType : current.boutType;
+      const refusal = await matrixRefusal(tx, mine, theirs, boutType);
+      if (refusal) {
+        if (input.action === 'revise') throw new ApiError('validation_failed', 'Check the highlighted fields', { 'terms.boutType': refusal });
+        throw new ApiError('conflict', `England Boxing rules no longer allow this bout: ${refusal}. Propose changes or withdraw.`);
+      }
     }
 
     let next: ProposalStatus = p.status;
