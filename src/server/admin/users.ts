@@ -73,6 +73,9 @@ export async function actOnAdminUser(actor: AdminSession, id: string, input: z.i
     let revoked = 0;
     if (input.action === 'disable') {
       if (u.role === 'owner') {
+        // Lock every active owner first, so two owners disabling each other at the same time
+        // are serialised and cannot leave the platform with no active owner.
+        await tx.execute(sql`select id from platform_users where role = 'owner' and status = 'active' order by id for update`);
         const [others] = await tx.select({ n: sql<number>`count(*)::int` }).from(platformUsers).where(and(eq(platformUsers.role, 'owner'), eq(platformUsers.status, 'active'), ne(platformUsers.id, id)));
         if (!Number(others?.n)) throw new ApiError('conflict', 'This is the only active owner account.');
       }

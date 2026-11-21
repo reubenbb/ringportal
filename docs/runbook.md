@@ -79,3 +79,17 @@ in §2 **and** roll back the deploy together.
 as a sensitive Vercel env var (production and preview). Rotate it by upserting a new random value of at least
 32 characters and redeploying. It moves approved clubs past their affiliation expiry (London date) to
 `reverification_required` and writes a system audit entry.
+
+## 6. Email (Resend)
+
+Code is ready; email stays off (`MAIL_TRANSPORT=disabled`) until these are done:
+
+1. Create a Resend account and add a sending subdomain of the production domain (e.g. `mail.<domain>`).
+2. Add the SPF, DKIM and (recommended) DMARC DNS records Resend shows; wait for "Verified".
+3. Create an API key with **sending access only**, restricted to that domain.
+4. In Vercel (production environment only), set as *sensitive* variables:
+   `MAIL_TRANSPORT=resend`, `RESEND_API_KEY=<key>`, `MAIL_FROM=RingPortal <no-reply@mail.<domain>>`.
+   The app refuses to start if the key or sender is missing or malformed.
+5. Redeploy and request a password reset for a test account; check it arrives and the link works.
+
+Logs record only the subject, HTTP status and Resend error name: never the recipient, body or key.

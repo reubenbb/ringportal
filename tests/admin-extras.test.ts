@@ -124,4 +124,31 @@ describe('administrator accounts', () => {
     await actOnAdminUser(own, second.platformUserId, { action: 'disable', reason: 'Handing over' }, meta);
     expect((await owner.query(`select status from platform_users where id = $1`, [second.platformUserId])).rows[0].status).toBe('disabled');
   });
+
+  it('never leaves the platform without an active owner, even when two owners disable each other at once', async () => {
+    const a = await adminSession('owner');
+    const b = await adminSession('owner');
+    // Test files run one at a time: make a and b the only active owners for this test, then restore.
+    const { rows: parked } = await owner.query(
+      `update platform_users set status = 'disabled' where role = 'owner' and status = 'active' and id not in ($1, $2) returning id`,
+      [a.platformUserId, b.platformUserId],
+    );
+    try {
+      const results = await Promise.allSettled([
+        actOnAdminUser(a, b.platformUserId, { action: 'disable', reason: 'Race test one' }, meta),
+        actOnAdminUser(b, a.platformUserId, { action: 'disable', reason: 'Race test two' }, meta),
+      ]);
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+      expect(rejected.reason).toMatchObject({ code: 'conflict', message: 'This is the only active owner account.' });
+      const active = await owner.query(`select id from platform_users where role = 'owner' and status = 'active' and id in ($1, $2)`, [a.platformUserId, b.platformUserId]);
+      expect(active.rowCount).toBe(1);
+      // A stale session of the disabled owner still cannot disable the last active one.
+      const survivor = active.rows[0].id as string;
+      const stale = survivor === a.platformUserId ? b : a;
+      await expect(actOnAdminUser(stale, survivor, { action: 'disable', reason: 'Stale session try' }, meta)).rejects.toMatchObject({ code: 'conflict' });
+    } finally {
+      if (parked.length) await owner.query(`update platform_users set status = 'active' where id = any($1::uuid[])`, [parked.map((r) => r.id)]);
+    }
+  });
 });

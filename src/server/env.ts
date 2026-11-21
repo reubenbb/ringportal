@@ -16,12 +16,20 @@ const schema = z
     MFA_ENCRYPTION_KEY: base64Key32,
     /** HMAC key used to pseudonymise IP addresses and rate-limit subjects in logs. */
     LOG_HASH_KEY: base64Key32,
-    /** 'console' prints mail to the server log (development/test only). 'disabled' sends nothing. */
-    MAIL_TRANSPORT: z.enum(['console', 'disabled']).default('disabled'),
+    /** 'resend' sends through Resend. 'console' prints mail to the server log (development/test only). 'disabled' sends nothing. */
+    MAIL_TRANSPORT: z.enum(['resend', 'console', 'disabled']).default('disabled'),
+    /** Resend API key (starts "re_"). Required when MAIL_TRANSPORT=resend. */
+    RESEND_API_KEY: z.string().regex(/^re_[A-Za-z0-9_]{10,}$/, 'must be a Resend API key').optional(),
+    /** Sender, e.g. "RingPortal <no-reply@mail.ringportal.co.uk>", on a domain verified in Resend. */
+    MAIL_FROM: z.string().regex(/^[^<>\r\n]{0,80}<[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+>$|^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/, 'must be an email address, optionally with a display name').optional(),
     /** Shared secret Vercel Cron sends as a bearer token. Scheduled jobs refuse to run without it. */
     CRON_SECRET: z.string().min(32).optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.MAIL_TRANSPORT === 'resend') {
+      if (!env.RESEND_API_KEY) ctx.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'required when MAIL_TRANSPORT=resend' });
+      if (!env.MAIL_FROM) ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'required when MAIL_TRANSPORT=resend' });
+    }
     if (env.NODE_ENV === 'production') {
       if (env.MAIL_TRANSPORT === 'console') {
         ctx.addIssue({ code: 'custom', path: ['MAIL_TRANSPORT'], message: 'console mail transport is not allowed in production' });

@@ -80,7 +80,7 @@ export async function requestPasswordReset(email: string, audience: ResetAudienc
       'If you did not ask for this, you can ignore this email. Your password has not changed.',
     ].join('\n'),
   });
-  if (!result.delivered) console.warn('[password-reset] reset email not delivered (mail transport disabled)');
+  if (!result.delivered) console.warn('[password-reset] reset email not delivered');
 }
 
 export async function confirmPasswordReset(token: string, newPassword: string, meta: { ipHash: string }): Promise<ResetAudience> {
