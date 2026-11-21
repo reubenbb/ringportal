@@ -191,7 +191,8 @@ describe('proposal conversations', () => {
   it('a proposal’s message starts its thread, titled by the two boxers', async () => {
     const a = await clubCtx();
     const b = await clubCtx();
-    const aBoxer = await createBoxer(a.club.id, { firstName: 'Jack', lastName: 'Thompson', dob: yearsAgo(24) });
+    // Both juniors: under-18s are only proposed against under-18s.
+    const aBoxer = await createBoxer(a.club.id, { firstName: 'Jack', lastName: 'Thompson', dob: yearsAgo(16) });
     const bBoxer = await createBoxer(b.club.id, { firstName: 'Lewis', lastName: 'Carter', dob: yearsAgo(15) });
     const res = await proposalApi(
       req('POST', '/api/proposals', {
@@ -202,7 +203,7 @@ describe('proposal conversations', () => {
     );
     expect(res.status).toBe(201);
     const [conv] = (await listConversations(b.session)).items;
-    expect(conv).toMatchObject({ kind: 'proposal', title: 'Proposal: Jack Thompson v Lewis Carter', unread: 1 });
+    expect(conv).toMatchObject({ kind: 'proposal', title: 'Proposal: Jack T. v Lewis Carter', unread: 1 });
     const [convA] = (await listConversations(a.session)).items;
     expect(convA!.title).toBe('Proposal: Jack Thompson v Lewis C.');
   });

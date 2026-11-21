@@ -153,6 +153,11 @@ export async function createProposal(session: ClubSession, input: CreateProposal
     if (opponent.sex !== own.sex) {
       throw new ApiError('validation_failed', 'Check the highlighted fields', { proposingBoxerId: 'Both boxers must be in the same sex category' });
     }
+    // Safeguarding: under-18s are only ever proposed against under-18s (same rule as matchmaking).
+    const ownCard = (await boxerCards(tx, [own.id])).get(own.id);
+    if (!ownCard || ownCard.isJunior !== opponent.isJunior) {
+      throw new ApiError('validation_failed', 'Check the highlighted fields', { proposingBoxerId: 'Under-18s can only be proposed against other under-18s' });
+    }
 
     const [existing] = await tx
       .select({ id: boutProposals.id })
