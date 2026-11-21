@@ -44,9 +44,45 @@ export default function TermsPage() {
 
       <h2>Our service</h2>
       <ul>
-        <li>We work to keep RingPortal available and secure but cannot promise it will always be uninterrupted or error-free.</li>
-        <li>[Insert pricing and payment terms once memberships launch.]</li>
-        <li>[Insert limitation of liability, governing law (England and Wales) and how we will tell clubs about changes to these terms.]</li>
+        <li>We work to keep RingPortal available and secure but cannot promise it will always be uninterrupted or error-free. We may change, pause or withdraw features, and will give notice of significant changes where we can.</li>
+      </ul>
+
+      <h2>Price</h2>
+      <ul>
+        <li>
+          RingPortal is free for registered clubs. If we introduce paid memberships, we will tell clubs at least 30 days before any charge applies, and no club will be charged
+          unless it chooses to sign up and agrees to the price first. [Owner to confirm.]
+        </li>
+      </ul>
+
+      <h2>Ending your use</h2>
+      <ul>
+        <li>A club can stop using RingPortal and ask us to close its account at any time.</li>
+        <li>We may suspend or close a club’s account if it breaks these terms, if its England Boxing affiliation lapses, or to protect boxers or other clubs. Where it is safe to do so, we will tell the club why.</li>
+      </ul>
+
+      <h2>Our responsibility to you</h2>
+      <ul>
+        <li>Nothing in these terms limits our liability for death or personal injury caused by our negligence, for fraud, or for anything else that cannot be limited by law.</li>
+        <li>
+          RingPortal is a tool to help clubs arrange bouts. We are not responsible for decisions clubs make using it, for the conduct of clubs or their members, or for whether a bout
+          is safe or permitted. Those remain the clubs’ responsibility under England Boxing rules.
+        </li>
+        <li>We are not liable for loss of profit, revenue or opportunity, or for any indirect or consequential loss.</li>
+        <li>Otherwise, our total liability to a club in any 12 months is limited to [£100, or the fees the club paid us in that period if higher]. [Owner or solicitor to confirm.]</li>
+      </ul>
+
+      <h2>Changes to these terms</h2>
+      <ul>
+        <li>
+          We will tell clubs about changes to these terms by email and when they next sign in, at least 30 days before the changes take effect, unless a change is needed sooner
+          for legal or safety reasons. If a change is significant, we will ask the club to accept the new terms before it carries on using RingPortal.
+        </li>
+      </ul>
+
+      <h2>Law</h2>
+      <ul>
+        <li>These terms are governed by the law of England and Wales, and the courts of England and Wales have jurisdiction over any dispute.</li>
       </ul>
 
       <h2>Privacy</h2>
