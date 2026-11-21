@@ -12,6 +12,7 @@ export function BoxersSection({
   clubName,
   linkedProfileHref,
   showActions = false,
+  transferRequested,
 }: {
   /** null = this club is not (yet) an approved RingPortal club. */
   roster: RosterBoxer[] | null;
@@ -19,6 +20,7 @@ export function BoxersSection({
   linkedProfileHref?: string;
   /** Propose/message actions, for another approved club's roster. */
   showActions?: boolean;
+  transferRequested?: string[];
 }) {
   return (
     <Card
@@ -28,7 +30,7 @@ export function BoxersSection({
       actions={linkedProfileHref ? <Link href={linkedProfileHref} className="text-sm font-semibold">Open RingPortal profile →</Link> : undefined}
     >
       {roster ? (
-        <RosterTable boxers={roster} emptyText={`${clubName} has not added any boxers yet.`} showActions={showActions} />
+        <RosterTable boxers={roster} emptyText={`${clubName} has not added any boxers yet.`} showActions={showActions} transferRequested={transferRequested} />
       ) : (
         <div className="py-4 text-sm text-muted">
           <p className="font-semibold text-ink">No boxers listed</p>

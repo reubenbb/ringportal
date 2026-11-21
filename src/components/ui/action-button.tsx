@@ -24,7 +24,7 @@ export function ActionButton({ endpoint, body, label, variant = 'secondary', con
   }
 
   return (
-    <span className="inline-flex flex-col gap-1">
+    <span className="inline-flex flex-col items-start gap-1">
       {asking ? (
         <span className="inline-flex flex-wrap items-center gap-2 text-sm text-ink">
           {confirm}

@@ -2,8 +2,8 @@
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type CountKey = 'messages' | 'proposals';
-type Summary = { unreadMessages: number; unreadConversations: number; proposalsNeedingAction: number };
+export type CountKey = 'messages' | 'proposals' | 'transfers';
+type Summary = { unreadMessages: number; unreadConversations: number; proposalsNeedingAction: number; transfersNeedingAction: number };
 
 const POLL_MS = 30_000;
 export const REFRESH_EVENT = 'rp:notifications-refresh';
@@ -45,9 +45,10 @@ export function useNotificationCounts(enabled: boolean): Partial<Record<CountKey
       if (prev && document.visibilityState === 'hidden' && browserNotificationsOn()) {
         if (s.unreadMessages > prev.unreadMessages) new Notification('RingPortal', { body: 'You have a new message from a club.', tag: 'rp-messages' });
         if (s.proposalsNeedingAction > prev.proposalsNeedingAction) new Notification('RingPortal', { body: 'A bout proposal needs your attention.', tag: 'rp-proposals' });
+        if (s.transfersNeedingAction > prev.transfersNeedingAction) new Notification('RingPortal', { body: 'A club has asked to transfer one of your boxers.', tag: 'rp-transfers' });
       }
       previous.current = s;
-      setCounts({ messages: s.unreadMessages, proposals: s.proposalsNeedingAction });
+      setCounts({ messages: s.unreadMessages, proposals: s.proposalsNeedingAction, transfers: s.transfersNeedingAction });
     } catch {
       /* offline or signed out: keep the last counts */
     } finally {

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MessageButton } from '@/components/messaging/conversation-buttons';
+import { ActionButton } from '@/components/ui/action-button';
 import { Badge } from '@/components/ui/card';
 import { AVAILABILITY_LABEL, AVAILABILITY_TONE, SEX_LABEL, formatKg, recordLabel } from '@/lib/boxers';
 import type { RosterBoxer } from '@/server/boxers/service';
@@ -7,12 +8,24 @@ import type { RosterBoxer } from '@/server/boxers/service';
 /** Another club's boxers, minimised: no dates of birth, medical details or notes; juniors' surnames shortened. */
 const UNAVAILABLE = new Set(['injured_medical', 'inactive']);
 
-export function RosterTable({ boxers, emptyText, showActions = false }: { boxers: RosterBoxer[]; emptyText: string; showActions?: boolean }) {
+export function RosterTable({
+  boxers,
+  emptyText,
+  showActions = false,
+  transferRequested = [],
+}: {
+  boxers: RosterBoxer[];
+  emptyText: string;
+  showActions?: boolean;
+  /** Boxers this club has already asked to transfer in (pending). */
+  transferRequested?: string[];
+}) {
+  const requested = new Set(transferRequested);
   if (boxers.length === 0) return <p className="py-6 text-center text-sm text-muted">{emptyText}</p>;
   return (
     <>
       <div className="-mx-5 overflow-x-auto">
-        <table className="w-full min-w-[880px] text-sm">
+        <table className="w-full min-w-[1020px] text-sm">
           <caption className="sr-only">Boxers</caption>
           <thead>
             <tr className="border-b border-line text-left text-xs text-muted">
@@ -57,6 +70,18 @@ export function RosterTable({ boxers, emptyText, showActions = false }: { boxers
                         </Link>
                       )}
                       <MessageButton target={{ kind: 'boxer', boxerId: b.id }} label="Message" variant="secondary" compact />
+                      {requested.has(b.id) ? (
+                        <Badge tone="blue">Transfer requested</Badge>
+                      ) : (
+                        <ActionButton
+                          endpoint="/api/transfers"
+                          body={{ boxerId: b.id }}
+                          label="Request transfer"
+                          variant="ghost"
+                          compact
+                          confirm={`Ask this club to transfer ${b.displayName} to your club?`}
+                        />
+                      )}
                     </div>
                   </td>
                 ) : null}

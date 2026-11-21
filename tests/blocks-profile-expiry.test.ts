@@ -10,6 +10,8 @@ import { POST as createSparApi } from '@/app/api/sparring/route';
 import { POST as sparApi } from '@/app/api/sparring/[id]/route';
 import { GET as cronApi } from '@/app/api/cron/affiliation-expiry/route';
 import { getBlockState, listMyBlocks } from '@/server/clubs/blocks';
+import { listSparring } from '@/server/sparring/service';
+import { listRequests } from '@/server/shows/service';
 import { getClubProfile } from '@/server/clubs/profile';
 import { runAffiliationExpiry } from '@/server/clubs/expiry';
 import { searchMatches, matchQuerySchema } from '@/server/matchmaking/service';
@@ -56,9 +58,17 @@ describe('blocking a club', () => {
     expect((await json<{ error: { message: string } }>(await call(sendApi, a, `/api/conversations/${conv.id}/messages`, { body: 'Hi' }, conv.id))).error.message).toBe('You cannot contact this club.');
     expect((await call(openApi, a, '/api/conversations', { kind: 'boxer', boxerId: bBoxer })).status).toBe(409);
     expect((await call(proposeApi, a, '/api/proposals', { proposingBoxerId: aBoxer, receivingBoxerId: bBoxer, weightKg: 111, boutType: 'competitive' })).status).toBe(409);
-    expect((await call(sparApi, b, `/api/sparring/${spar.id}`, { action: 'offer', boxerId: bBoxer }, spar.id)).status).toBe(409);
+    expect((await call(sparApi, b, `/api/sparring/${spar.id}`, { action: 'offer', boxerId: bBoxer }, spar.id)).status).toBe(404); // hidden from the blocked club
     expect((await searchMatches(a.session, aBoxer, matchQuerySchema.parse({})))!.suitable.map((r) => r.id)).not.toContain(bBoxer);
     expect((await searchMatches(b.session, bBoxer, matchQuerySchema.parse({})))!.suitable.map((r) => r.id)).not.toContain(aBoxer);
+    // Open listings from the other club disappear both ways.
+    const { rows: oq } = await owner.query(
+      `insert into opponent_requests (club_id, sex, min_age, max_age, weight_kg, bout_type) values ($1, 'male', 18, 30, 70, 'competitive') returning id`,
+      [a.club.id],
+    );
+    expect((await listSparring(b.session)).open.map((r) => r.id)).not.toContain(spar.id);
+    expect((await listRequests(b.session, 'open')).map((r) => r.id)).not.toContain(oq[0].id);
+    expect((await listSparring(a.session)).mine.map((r) => r.id)).toContain(spar.id); // own listing unaffected
 
     // Enforced in the database too.
     const app = new Client({ connectionString: TEST_APP_URL });
@@ -77,6 +87,8 @@ describe('blocking a club', () => {
     }
 
     expect((await call(blockApi, b, `/api/clubs/${a.club.id}/block`, { blocked: false }, a.club.id)).status).toBe(200);
+    expect((await listSparring(b.session)).open.map((r) => r.id)).toContain(spar.id);
+    expect((await listRequests(b.session, 'open')).map((r) => r.id)).toContain(oq[0].id);
     expect((await call(sendApi, a, `/api/conversations/${conv.id}/messages`, { body: 'Back in touch' }, conv.id)).status).toBe(201);
     const actions = await owner.query(`select action from audit_log where club_id = $1 and action like 'club.%block%' order by id`, [b.club.id]);
     expect(actions.rows.map((r) => r.action)).toEqual(['club.blocked', 'club.unblocked']);

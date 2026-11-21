@@ -820,3 +820,39 @@ export const clubBlocks = pgTable(
     check('club_blocks_not_self', sql`${t.blockerClubId} <> ${t.blockedClubId}`),
   ],
 );
+
+// Boxer transfers -------------------------------------------------------------
+// The new club requests a boxer; the boxer's current club approves or declines.
+// The move itself happens only inside approve_boxer_transfer() (SECURITY DEFINER),
+// because row-level security never lets a club write a boxer into another club.
+
+export const boxerTransferStatus = pgEnum('boxer_transfer_status', ['pending', 'approved', 'declined', 'cancelled']);
+
+export const boxerTransfers = pgTable(
+  'boxer_transfers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    boxerId: uuid('boxer_id')
+      .notNull()
+      .references(() => boxers.id, { onDelete: 'restrict' }),
+    fromClubId: uuid('from_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    toClubId: uuid('to_club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'restrict' }),
+    status: boxerTransferStatus('status').notNull().default('pending'),
+    note: text('note'),
+    requestedBy: uuid('requested_by').references(() => clubUsers.id, { onDelete: 'set null' }),
+    decidedBy: uuid('decided_by').references(() => clubUsers.id, { onDelete: 'set null' }),
+    decidedAt: ts('decided_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('boxer_transfers_from_idx').on(t.fromClubId, t.createdAt),
+    index('boxer_transfers_to_idx').on(t.toClubId, t.createdAt),
+    uniqueIndex('boxer_transfers_pending_uq').on(t.boxerId).where(sql`${t.status} = 'pending'`),
+    check('boxer_transfers_distinct_clubs', sql`${t.fromClubId} <> ${t.toClubId}`),
+    check('boxer_transfers_note_len', sql`coalesce(char_length(${t.note}), 0) <= 500`),
+  ],
+);

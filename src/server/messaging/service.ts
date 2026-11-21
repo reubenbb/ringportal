@@ -332,10 +332,10 @@ export async function setConversationArchived(session: ClubSession, id: string, 
 
 // Notifications -------------------------------------------------------------------
 
-export type NotificationSummary = { unreadMessages: number; unreadConversations: number; proposalsNeedingAction: number };
+export type NotificationSummary = { unreadMessages: number; unreadConversations: number; proposalsNeedingAction: number; transfersNeedingAction: number };
 
 export async function notificationSummary(session: ClubSession): Promise<NotificationSummary> {
-  if (session.clubStatus !== 'approved') return { unreadMessages: 0, unreadConversations: 0, proposalsNeedingAction: 0 };
+  if (session.clubStatus !== 'approved') return { unreadMessages: 0, unreadConversations: 0, proposalsNeedingAction: 0, transfersNeedingAction: 0 };
   return withClub(session.clubId, async (tx) => {
     const me = session.clubId;
     const res = await tx.execute<{ messages: number; conversations: number }>(sql`
@@ -352,6 +352,9 @@ export async function notificationSummary(session: ClubSession): Promise<Notific
       unreadMessages: Number(res.rows[0]?.messages ?? 0),
       unreadConversations: Number(res.rows[0]?.conversations ?? 0),
       proposalsNeedingAction: await countProposalsNeedingAction(tx, me),
+      transfersNeedingAction: Number(
+        (await tx.execute<{ n: number }>(sql`select count(*)::int as n from boxer_transfers where from_club_id = ${me}::uuid and status = 'pending'`)).rows[0]?.n ?? 0,
+      ),
     };
   });
 }

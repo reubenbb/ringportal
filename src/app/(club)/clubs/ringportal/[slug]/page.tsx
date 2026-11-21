@@ -9,6 +9,7 @@ import { Alert } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { getBlockState } from '@/server/clubs/blocks';
 import { getClubProfile, type ClubProfile } from '@/server/clubs/profile';
+import { pendingOutgoingFor } from '@/server/transfers/service';
 import { Badge, PageHeader } from '@/components/ui/card';
 
 function ProfileCard({ p }: { p: ClubProfile | null }) {
@@ -85,7 +86,12 @@ export default async function RingPortalClubPage({ params }: { params: Promise<{
       {block === 'mine' ? <Alert tone="warning" title="You have blocked this club">You cannot message this club, propose bouts or offer sparring partners until you unblock it.</Alert> : null}
       {block === 'theirs' ? <Alert tone="info" title="You cannot contact this club">This club is not accepting messages or proposals from your club.</Alert> : null}
       <ProfileCard p={profile} />
-      <BoxersSection roster={roster} clubName={club.name} showActions={block === 'none'} />
+      <BoxersSection
+        roster={roster}
+        clubName={club.name}
+        showActions={block === 'none'}
+        transferRequested={roster?.length ? [...(await pendingOutgoingFor(session, roster.map((b) => b.id)))] : []}
+      />
     </>
   );
 }

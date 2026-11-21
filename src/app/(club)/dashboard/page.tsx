@@ -61,6 +61,13 @@ export default async function DashboardPage() {
                   {summary.unreadConversations > 1 ? ` in ${summary.unreadConversations} conversations` : ''}
                 </p>
               </Link>
+              {summary.transfersNeedingAction > 0 ? (
+                <Link href="/transfers" className="rounded-md border border-line px-4 py-3 text-ink no-underline hover:bg-surface-2">
+                  <p className="rp-eyebrow">Boxer transfers</p>
+                  <p className="rp-display mt-1 text-3xl tabular-nums">{summary.transfersNeedingAction}</p>
+                  <p className="text-sm text-muted">{summary.transfersNeedingAction === 1 ? 'request needs' : 'requests need'} your decision</p>
+                </Link>
+              ) : null}
             </div>
             {waiting.items.length ? (
               <ul className="mt-4 divide-y divide-line border-t border-line">

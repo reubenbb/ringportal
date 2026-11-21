@@ -191,6 +191,10 @@ export async function setAvailability(session: ClubSession, id: string, status: 
     if (!prev) return null;
     if (prev.archivedAt) throw new ApiError('conflict', 'Restore this boxer before changing availability');
     if (prev.availability === status) return { changed: false };
+    // A junior with no consent on record (e.g. just transferred in) cannot be offered for bouts or sparring.
+    if ((status === 'ready' || status === 'provisionally_arranged') && isMinor(prev.dateOfBirth) && !prev.guardianConsentAt) {
+      throw new ApiError('conflict', 'Edit this boxer and confirm your club holds parent or guardian consent before making them available.');
+    }
     await tx.update(boxers).set({ availability: status, availabilityChangedAt: new Date() }).where(eq(boxers.id, id));
     await tx.insert(boxerAvailabilityHistory).values({ boxerId: id, clubId: session.clubId, fromStatus: prev.availability, toStatus: status, changedBy: session.clubUserId });
     await audit(tx, {

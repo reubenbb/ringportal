@@ -148,6 +148,27 @@
       "when": 1795248304977,
       "tag": "0020_profile_blocks_security",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795250005651,
+      "tag": "0021_boxer_transfers",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795250006547,
+      "tag": "0022_boxer_transfers_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795250740299,
+      "tag": "0023_hide_blocked_listings",
+      "breakpoints": true
     }
   ]
 }

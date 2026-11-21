@@ -118,7 +118,7 @@ describe('sending and reading messages', () => {
 
     await send(b, id, 'Shall we propose a date?');
     const res = await notificationsApi(req('GET', '/api/notifications', { cookies: { rp_session: a.cookie } }), ctx);
-    expect(await json(res)).toEqual({ unreadMessages: 1, unreadConversations: 1, proposalsNeedingAction: 0 });
+    expect(await json(res)).toEqual({ unreadMessages: 1, unreadConversations: 1, proposalsNeedingAction: 0, transfersNeedingAction: 0 });
   });
 
   it('validates message bodies and query cursors', async () => {
