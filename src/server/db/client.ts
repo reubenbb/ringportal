@@ -11,10 +11,19 @@ export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 type Holder = { pool: Pool; db: Db };
 const globalForDb = globalThis as unknown as { __ringportalDb?: Holder };
 
+/**
+ * The pg driver currently treats sslmode=require as full certificate verification, and has announced
+ * that a future major version will weaken it. Ask for verify-full explicitly so the behaviour cannot
+ * change under us. URLs without an sslmode (local development) are left alone.
+ */
+export function strictSsl(url: string): string {
+  return url.replace(/([?&]sslmode=)(require|prefer|verify-ca)(?=&|$)/, '$1verify-full');
+}
+
 function holder(): Holder {
   if (!globalForDb.__ringportalDb) {
     const pool = new Pool({
-      connectionString: env().DATABASE_URL,
+      connectionString: strictSsl(env().DATABASE_URL),
       max: 5,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 10_000,
