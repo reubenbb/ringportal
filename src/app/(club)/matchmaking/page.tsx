@@ -247,7 +247,7 @@ export default async function MatchmakingPage({ searchParams }: { searchParams: 
           ) : null}
 
           <p className="mt-4 max-w-3xl text-xs text-muted">
-            Scores are out of 100: weight closeness (40), age closeness (25), competitive experience (25) and skills bouts (10). Under-18s are only matched with under-18s. Pairings are checked against the age categories, age gaps and Minors/Schools weight limit in the England Boxing Rule Book 26.3 (2026 Club Boxing Matrix). A suggestion is not England Boxing approval: coaches still check medicals, weight-category spans and every other rule. Skills bouts are never counted in a competitive record.
+            Scores are out of 100: weight closeness (40), age closeness (25), competitive experience (25) and skills bouts (10). Under-18s are only matched with under-18s. Pairings are checked against the England Boxing Rule Book 26.3: age categories and age gaps (2026 Club Boxing Matrix), the 2 kg limit for Minors and Schools, and the weight-category spans for Junior, Youth and Senior (Section 13). A suggestion is not England Boxing approval: coaches still check medicals, the weigh-in and every other rule. Skills bouts are never counted in a competitive record.
           </p>
         </>
       ) : null}

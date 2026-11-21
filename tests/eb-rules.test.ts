@@ -3,7 +3,8 @@ import { POST as login } from '@/app/api/auth/login/route';
 import { POST as proposeApi } from '@/app/api/proposals/route';
 import { POST as createSparApi } from '@/app/api/sparring/route';
 import { searchMatches, matchQuerySchema } from '@/server/matchmaking/service';
-import { competitiveCheck, skillsCheck, type PairFacts } from '@/lib/eb-rules';
+import { competitiveCheck, skillsCheck, type PairBoxer, type PairFacts } from '@/lib/eb-rules';
+import { weightBand } from '@/lib/eb-weights';
 import { closeDb, withClub } from '@/server/db/client';
 import { pairFacts } from '@/server/eb-facts';
 import type { ClubSession } from '@/server/auth/session';
@@ -64,7 +65,7 @@ describe('England Boxing 2026 matrix: categories in the database', () => {
 
 describe('England Boxing 2026 matrix: rules', () => {
   const f = (o: Partial<PairFacts>): PairFacts => ({ ownCategory: 'junior', category: 'junior', gapBand: 'lt12', ownSkillsAge: true, skillsAge: true, ...o });
-  const box = (o: Partial<{ weightKg: number; totalBouts: number; skillsBouts: number }> = {}) => ({ weightKg: 50, totalBouts: 0, skillsBouts: 0, ...o });
+  const box = (o: Partial<PairBoxer> = {}): PairBoxer => ({ sex: 'male', weightKg: 50, totalBouts: 0, skillsBouts: 0, ...o });
 
   it('allows only the matrix pairings, each with its age gap', () => {
     expect(competitiveCheck(f({}), box(), box()).fails).toEqual([]);
@@ -81,12 +82,43 @@ describe('England Boxing 2026 matrix: rules', () => {
     expect(competitiveCheck(f({ ownCategory: 'senior', category: 'outside' }), box(), box()).fails[0]).toMatch(/before 1986/);
   });
 
-  it('applies the 2 kg limit to Minors and Schools, and flags it for others', () => {
+  it('applies the 2 kg limit to Minors and Schools', () => {
     expect(competitiveCheck(f({ ownCategory: 'schools', category: 'schools' }), box({ weightKg: 40 }), box({ weightKg: 42 })).fails).toEqual([]);
     expect(competitiveCheck(f({ ownCategory: 'schools', category: 'schools' }), box({ weightKg: 40 }), box({ weightKg: 42.5 })).fails[0]).toMatch(/limit for Minors and Schools is 2 kg/);
-    const senior = competitiveCheck(f({ ownCategory: 'senior', category: 'senior' }), box({ weightKg: 70 }), box({ weightKg: 73 }));
-    expect(senior.fails).toEqual([]);
-    expect(senior.flags[0]).toMatch(/smaller weight category’s span/);
+    expect(competitiveCheck(f({ ownCategory: 'minor', category: 'schools' }), box({ weightKg: 30 }), box({ weightKg: 32.1 })).fails[0]).toMatch(/2 kg/);
+  });
+
+  it('finds Section 13 weight categories and their spans', () => {
+    expect(weightBand('junior', 'male', 46)).toEqual({ label: 'Under 46 kg', min: 44, max: 46, span: 2 });
+    expect(weightBand('junior', 'female', 44.1)).toMatchObject({ label: 'Under 46 kg', span: 2 });
+    expect(weightBand('junior', 'male', 58)).toMatchObject({ label: 'Under 60 kg', span: 3 });
+    expect(weightBand('junior', 'male', 35)).toBeNull(); // lightest band has no lower limit
+    expect(weightBand('junior', 'male', 81)).toBeNull(); // open Over 80 kg band
+    expect(weightBand('youth', 'male', 46)).toMatchObject({ label: '45 kg–47 kg', span: 2 });
+    expect(weightBand('youth', 'male', 44)).toBeNull();
+    expect(weightBand('youth', 'female', 66)).toMatchObject({ label: 'Under 67.5 kg', span: 2.5 });
+    expect(weightBand('senior', 'male', 72)).toMatchObject({ label: 'Under 75 kg', span: 5 });
+    expect(weightBand('senior', 'female', 49)).toMatchObject({ label: 'Under 51 kg', span: 3 });
+    expect(weightBand('schools', 'male', 40)).toBeNull();
+  });
+
+  it('limits Junior, Youth and Senior weight gaps to the smaller category span', () => {
+    const jj = f({ ownCategory: 'junior', category: 'junior' });
+    expect(competitiveCheck(jj, box({ weightKg: 45 }), box({ weightKg: 47 })).fails).toEqual([]);
+    expect(competitiveCheck(jj, box({ weightKg: 45 }), box({ weightKg: 47.5 })).fails[0]).toMatch(/limit is 2 kg, the span of the smaller weight category \(Under 46 kg\)/);
+    // The rule book's own example: a 2.5 kg span against a 5 kg span allows 2.5 kg.
+    const ss = f({ ownCategory: 'senior', category: 'senior' });
+    expect(competitiveCheck(ss, box({ weightKg: 64 }), box({ weightKg: 66.5 })).fails).toEqual([]);
+    expect(competitiveCheck(ss, box({ weightKg: 64 }), box({ weightKg: 67 })).fails[0]).toMatch(/limit is 2.5 kg.*Under 65 kg/);
+    expect(competitiveCheck(ss, box({ weightKg: 71 }), box({ weightKg: 76 })).fails).toEqual([]);
+    // Female Youth use their own table.
+    const yy = f({ ownCategory: 'youth', category: 'youth' });
+    expect(competitiveCheck(yy, box({ sex: 'female', weightKg: 49 }), box({ sex: 'female', weightKg: 52 })).fails).toEqual([]);
+    expect(competitiveCheck(yy, box({ sex: 'female', weightKg: 49 }), box({ sex: 'female', weightKg: 52.5 })).fails[0]).toMatch(/limit is 3 kg/);
+    // No defined span (open heavyweight band): flagged, not refused.
+    const heavy = competitiveCheck(ss, box({ weightKg: 92 }), box({ weightKg: 95 }));
+    expect(heavy.fails).toEqual([]);
+    expect(heavy.flags[0]).toMatch(/no weight-category span/);
   });
 
   it('applies Annex C2 to skills bouts', () => {

@@ -254,7 +254,7 @@ describe('proposal privacy and isolation', () => {
     const s = await scenario();
     const ids: string[] = [];
     for (let i = 0; i < 27; i++) {
-      const bBoxer = await createBoxer(s.b.club.id, { weightKg: 60 + (i % 5) });
+      const bBoxer = await createBoxer(s.b.club.id, { weightKg: 62.5 + (i % 5) * 0.5 });
       ids.push(await propose({ ...s, bBoxer }));
     }
     const page1 = await listProposals(s.b.session, 'action');

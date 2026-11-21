@@ -1,9 +1,11 @@
 /**
  * England Boxing Rule Book 26.3 (2026 Club Boxing Matrix and Annex C2), as far as RingPortal can check it.
  * RingPortal is stricter in one place: an under-18 is never matched with someone 18 or over, although the
- * matrix allows Youth v Senior. Weight-category spans for Junior, Youth and Senior are not encoded, so a
- * gap over 2 kg there is flagged for the coaches to check rather than refused.
+ * matrix allows Youth v Senior. Junior, Youth and Senior weight differences use the Section 13 weight-category spans
+ * (see eb-weights.ts); where a boxer has no defined span, a gap over 2 kg is flagged rather than refused.
  */
+import { weightBand } from '@/lib/eb-weights';
+
 export const RULEBOOK = 'England Boxing Rule Book 26.3 (2026 Club Boxing Matrix)';
 
 export const EB_CATEGORIES = ['too_young', 'minor', 'schools', 'junior', 'youth', 'senior', 'outside'] as const;
@@ -39,7 +41,7 @@ const PAIRS: Record<string, GapBand | null> = {
 const pairKey = (a: Boxable, b: Boxable) => [a, b].sort().join('|');
 
 export type PairFacts = { ownCategory: EbCategory; category: EbCategory; gapBand: GapBand; ownSkillsAge: boolean; skillsAge: boolean };
-export type PairBoxer = { weightKg: number; totalBouts: number; skillsBouts: number };
+export type PairBoxer = { sex: 'male' | 'female'; weightKg: number; totalBouts: number; skillsBouts: number };
 
 const GAP_TEXT: Record<GapBand, string> = { lt12: 'under 12 months', lt24: 'under 24 months', ge24: '24 months or more' };
 const within = (gap: GapBand, max: GapBand) => (max === 'lt24' ? gap !== 'ge24' : gap === 'lt12');
@@ -65,8 +67,19 @@ export function competitiveCheck(f: PairFacts, own: PairBoxer, other: PairBoxer)
   else if (max === 'lt24' && f.gapBand === 'lt24') flags.push('More than 12 months apart in age: England Boxing advises extra caution');
   if (key === 'senior|youth') flags.push('Senior v Youth: both boxers must wear head guards');
   const kg = Math.abs(own.weightKg - other.weightKg);
-  if ((a === 'minor' || a === 'schools' || b === 'minor' || b === 'schools') && kg > 2) fails.push(`Weight difference of ${kg.toFixed(1)} kg: the limit for Minors and Schools is 2 kg`);
-  else if (kg > 2) flags.push(`Weight difference of ${kg.toFixed(1)} kg: check it is within the smaller weight category’s span`);
+  const diff = `Weight difference of ${kg.toFixed(1)} kg`;
+  if (a === 'minor' || a === 'schools' || b === 'minor' || b === 'schools') {
+    if (kg > 2 + 1e-9) fails.push(`${diff}: the limit for Minors and Schools is 2 kg`);
+  } else {
+    // Junior, Youth and Senior: no more than the smaller of the two weight-category spans.
+    const bands = [weightBand(a, own.sex, own.weightKg), weightBand(b, other.sex, other.weightKg)];
+    if (bands[0] && bands[1]) {
+      const smaller = bands[0].span <= bands[1].span ? bands[0] : bands[1];
+      if (kg > smaller.span + 1e-9) fails.push(`${diff}: the limit is ${smaller.span} kg, the span of the smaller weight category (${smaller.label})`);
+    } else if (kg > 2 + 1e-9) {
+      flags.push(`${diff}: no weight-category span to check against, so check it against England Boxing’s weight categories`);
+    }
+  }
   return { fails, flags };
 }
 
