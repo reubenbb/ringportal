@@ -88,6 +88,6 @@ Use that role's pooled connection string as `DATABASE_URL`. Never give the app t
 
 ## Rollback
 
-Drizzle migrations are forward-only. Rollback is via Neon point-in-time restore / branch reset
-(history retention is currently 6 hours on this plan) and a compensating migration. A tested
-restore procedure is still outstanding.
+Drizzle migrations are forward-only. Rollback is via a pre-migration Neon snapshot or point-in-time
+restore (history retention is currently 6 hours on this plan) plus a compensating migration.
+The tested procedure is in [docs/runbook.md](docs/runbook.md).
