@@ -4,7 +4,7 @@ import { POST as login } from '@/app/api/auth/login/route';
 import { POST as createShowApi } from '@/app/api/shows/route';
 import { PUT as updateShowApi, POST as showStatusApi } from '@/app/api/shows/[id]/route';
 import { POST as createRequestApi } from '@/app/api/opponent-requests/route';
-import { POST as requestStatusApi } from '@/app/api/opponent-requests/[id]/route';
+import { POST as requestStatusApi, PUT as updateRequestApi } from '@/app/api/opponent-requests/[id]/route';
 import { POST as createSparApi } from '@/app/api/sparring/route';
 import { POST as sparApi } from '@/app/api/sparring/[id]/route';
 import { POST as offerApi } from '@/app/api/sparring/offers/[id]/route';
@@ -114,6 +114,36 @@ describe('opponent requests', () => {
     expect((await post(requestStatusApi, a, `/api/opponent-requests/${id}`, { status: 'closed' }, id)).status).toBe(200);
     expect((await listRequests(b.session, 'open')).some((r) => r.id === id)).toBe(false);
     expect((await listRequests(a.session, 'mine')).find((r) => r.id === id)!.status).toBe('closed');
+  });
+
+  it('never mixes under-18s and adults', async () => {
+    const a = await clubCtx();
+    const junior = await createBoxer(a.club.id, { firstName: 'Kai', lastName: 'Young', dob: yearsAgo(16) });
+    const adult = await createBoxer(a.club.id, { firstName: 'Sam', lastName: 'Older', dob: yearsAgo(25) });
+    const send = (body: Record<string, unknown>) => post(createRequestApi, a, '/api/opponent-requests', requestBody(body));
+    const fieldsOf = async (res: Response) => (await json<{ error: { fields: Record<string, string> } }>(res)).error.fields;
+
+    // A range that crosses 17/18 is refused, with or without a linked boxer.
+    for (const range of [{ minAge: 16, maxAge: 20 }, { minAge: 17, maxAge: 18 }]) {
+      const res = await send(range);
+      expect(res.status).toBe(422);
+      expect((await fieldsOf(res)).maxAge).toMatch(/under-18s cannot box adults/i);
+    }
+    // A junior's request must be for under-18s; an adult's for 18 and over.
+    const juniorWithAdults = await send({ boxerId: junior, minAge: 18, maxAge: 22 });
+    expect(juniorWithAdults.status).toBe(422);
+    expect((await fieldsOf(juniorWithAdults)).maxAge).toMatch(/17 or under/);
+    const adultWithJuniors = await send({ boxerId: adult, minAge: 15, maxAge: 17 });
+    expect(adultWithJuniors.status).toBe(422);
+    expect((await fieldsOf(adultWithJuniors)).maxAge).toMatch(/18 or over/);
+
+    // Matching categories are accepted, including on edit.
+    expect((await send({ boxerId: junior, minAge: 15, maxAge: 17 })).status).toBe(201);
+    const ok = await send({ boxerId: adult, minAge: 20, maxAge: 30 });
+    expect(ok.status).toBe(201);
+    const { id } = await json<{ id: string }>(ok);
+    const edit = await post(updateRequestApi, a, `/api/opponent-requests/${id}`, requestBody({ boxerId: adult, minAge: 16, maxAge: 30 }), id, 'PUT');
+    expect(edit.status).toBe(422);
   });
 });
 

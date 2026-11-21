@@ -132,7 +132,12 @@ export const requestSchema = z
     location: text(160),
     requirements: text(1000),
   })
-  .refine((v) => v.minAge <= v.maxAge, { path: ['maxAge'], message: 'Maximum age must be at least the minimum age' });
+  .refine((v) => v.minAge <= v.maxAge, { path: ['maxAge'], message: 'Maximum age must be at least the minimum age' })
+  // Juniors never box adults, so a request is either for under-18s or for 18 and over, never both.
+  .refine((v) => v.maxAge < v.minAge || v.minAge >= 18 || v.maxAge <= 17, {
+    path: ['maxAge'],
+    message: 'Under-18s cannot box adults: use an age range of 17 or under, or 18 and over',
+  });
 export type RequestInput = z.infer<typeof requestSchema>;
 
 export type RequestView = {
@@ -172,6 +177,14 @@ async function checkLinks(tx: Tx, session: ClubSession, input: RequestInput) {
     const [b] = await tx.select({ sex: boxers.sex }).from(boxers).where(and(eq(boxers.id, input.boxerId), eq(boxers.clubId, session.clubId), isNull(boxers.archivedAt)));
     if (!b) throw new ApiError('validation_failed', 'Check the highlighted fields', { boxerId: 'Choose one of your active boxers' });
     if (b.sex !== input.sex) throw new ApiError('validation_failed', 'Check the highlighted fields', { sex: 'This must match your boxer’s sex category' });
+    const card = (await boxerCards(tx, [input.boxerId])).get(input.boxerId);
+    if (!card) throw new ApiError('validation_failed', 'Check the highlighted fields', { boxerId: 'Choose one of your active boxers' });
+    const rangeIsJunior = input.maxAge <= 17;
+    if (card.isJunior !== rangeIsJunior) {
+      throw new ApiError('validation_failed', 'Check the highlighted fields', {
+        maxAge: card.isJunior ? 'Your boxer is under 18, so opponents must be 17 or under' : 'Your boxer is 18 or over, so opponents must be 18 or over',
+      });
+    }
   }
 }
 

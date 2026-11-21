@@ -104,7 +104,7 @@ export function RequestForm({ requestId, initial, shows, boxers }: { requestId?:
       {sel('sex', 'Sex / category', <><option value="" disabled>Choose</option><option value="male">Male</option><option value="female">Female</option></>, { required: true })}
       {sel('boutType', 'Bout type', BOUT_TYPES.map((t) => <option key={t} value={t}>{BOUT_TYPE_LABEL[t]}</option>), { required: true })}
       <Field label="Minimum age" name="minAge" type="number" inputMode="numeric" required min={8} max={80} defaultValue={initial.minAge} error={e.minAge} onInput={c('minAge')} />
-      <Field label="Maximum age" name="maxAge" type="number" inputMode="numeric" required min={8} max={80} defaultValue={initial.maxAge} error={e.maxAge} onInput={c('maxAge')} />
+      <Field label="Maximum age" name="maxAge" type="number" inputMode="numeric" required min={8} max={80} defaultValue={initial.maxAge} hint="17 or under, or 18 and over: under-18s never box adults." error={e.maxAge} onInput={c('maxAge')} />
       <Field label="Weight (kg)" name="weightKg" type="number" inputMode="decimal" required min={20} max={200} step={0.1} defaultValue={initial.weightKg} error={e.weightKg} onInput={c('weightKg')} />
       <Field label="Experience wanted" name="experience" maxLength={200} defaultValue={initial.experience} hint="For example: 0–5 competitive bouts, or up to 3 skills bouts." error={e.experience} onInput={c('experience')} />
       <Field label="Date needed" name="neededOn" type="date" defaultValue={initial.neededOn} hint="Optional." error={e.neededOn} onChange={c('neededOn')} />
